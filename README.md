@@ -84,6 +84,16 @@ npm run check      # Mozilla add-on lint + integration tests in headless Firefox
 npm run build      # Unsigned extension ZIP in dist/
 ```
 
+## GitHub releases
+
+Push a version tag matching `package.json` and `extension/manifest.json`, such as `v0.3.0`, to run **Build**. It validates the extension and uploads the unsigned ZIP as a workflow artifact. After that run succeeds, open **Actions → Release → Run workflow**, enter the same tag, and the workflow creates the GitHub release with that ZIP attached. You can also run **Build** manually for an existing tag before creating the release.
+
+## Install a build
+
+To test an unsigned ZIP from a GitHub release, download it and open `about:debugging#/runtime/this-firefox`. Click **Load Temporary Add-on…**, choose the ZIP, and reload any already-open webpages. Firefox removes temporary add-ons when it restarts.
+
+For a permanent installation in standard Firefox, first submit the ZIP to Mozilla for signing (listed on AMO or unlisted for self-distribution). Download the signed `.xpi`, open `about:addons`, select **Install Add-on From File** from the settings cog, choose the `.xpi`, then confirm **Add**. The ZIP produced by this repository's build workflow is unsigned and cannot be permanently installed in standard Firefox.
+
 After `npm start`, open the demo URL in that Firefox window. The demo includes a long document, independent vertical and horizontal scrolling panels, a link, and a text field. It relies on the installed extension; it does not embed or imitate the extension logic.
 
 The integration tests install the actual extension into a fresh Firefox profile using Selenium. They cover proportional mapping on both axes, diagonal movement, right-to-left scrolling, stationary holds, release, edge clamping, nonzero starting positions, nested containers, smooth CSS scrolling, Escape, middle-click links, input fields, modifiers, changing document height, shadow DOM, frames, saved settings, current-page shortcuts, rule removal, and cross-origin frame exclusions during single-page app navigation. Unit tests also check URL pattern matching and settings migration. Selenium Manager downloads geckodriver on the first test run. Test screenshots are written to `test-results/`. Set `FIREFOX_BINARY` if Firefox is not in a standard installation location.
