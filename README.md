@@ -1,5 +1,7 @@
 # Absolute Scrolling
 
+Licensed under the [MIT License](LICENSE).
+
 A Firefox extension for proportional middle-mouse scrolling in both directions. Hold the middle mouse button: moving **20% of the viewport height moves 20% of the vertical scroll range**, and moving **20% of the viewport width moves 20% of the horizontal range** at the default sensitivity. Diagonal movement scrolls both axes. Stop moving and the page stays still.
 
 ## Try it in Firefox
