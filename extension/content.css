@@ -1,5 +1,11 @@
 :root[data-absolute-scrolling-active],
 :root[data-absolute-scrolling-active] * {
-  cursor: ns-resize !important;
+  cursor: move !important;
   user-select: none !important;
 }
+
+:root[data-absolute-scrolling-active="x"],
+:root[data-absolute-scrolling-active="x"] * { cursor: ew-resize !important; }
+
+:root[data-absolute-scrolling-active="y"],
+:root[data-absolute-scrolling-active="y"] * { cursor: ns-resize !important; }

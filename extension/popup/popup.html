@@ -6,6 +6,7 @@
     <title>Absolute Scrolling</title>
     <link rel="stylesheet" href="popup.css">
     <script src="../settings.js" defer></script>
+    <script src="../patterns.js" defer></script>
     <script src="popup.js" defer></script>
   </head>
   <body>
@@ -26,10 +27,29 @@
       <div class="sensitivity-label"><label for="sensitivity">Sensitivity</label><output id="sensitivity-value" for="sensitivity">1×</output></div>
       <input id="sensitivity" type="range" min="0.25" max="2" step="0.25" value="1" disabled>
       <div class="range-labels"><span>Precise · 0.25×</span><span>Fast · 2×</span></div>
-      <p class="hint">Hold the middle button on the page and move up or down. Stop moving to stop scrolling. Release to finish.</p>
-      <p class="hint secondary">Links and text fields keep their usual behavior. Hold Alt to bypass.</p>
       <p id="status" role="status" aria-live="polite">Loading settings…</p>
+      <section class="exclusions" aria-labelledby="exclusions-title">
+        <h2 id="exclusions-title">Disabled pages <span id="pattern-count">0</span></h2>
+        <p id="page-state">Checking this page…</p>
+        <div class="page-actions">
+          <button id="disable-page" type="button" disabled>Disable this page</button>
+          <button id="disable-site" type="button" disabled>Disable this site</button>
+        </div>
+        <form id="pattern-form">
+          <label for="pattern">URL pattern</label>
+          <div class="pattern-entry">
+            <input id="pattern" type="text" placeholder="https://example.com/docs/*" autocomplete="off" spellcheck="false" aria-describedby="pattern-help" disabled>
+            <button id="add-pattern" type="submit" disabled>Add</button>
+          </div>
+          <p id="pattern-help">Use * for multiple pages, or *.example.com for subdomains. Query strings and #fragments are ignored.</p>
+          <p id="pattern-error" role="alert" hidden></p>
+        </form>
+        <ul id="patterns" aria-label="Disabled URL patterns"></ul>
+        <p id="empty-patterns">No disabled pages yet.</p>
+      </section>
+      <p class="hint">Hold the middle button and move in any direction. Stop moving to stop scrolling. Release to finish.</p>
+      <p class="hint secondary">Links and text fields keep their usual behavior. Hold Alt to bypass.</p>
     </main>
-    <footer>On-device only. No data collected.</footer>
+    <footer>Saved on this device. No tracking.</footer>
   </body>
 </html>

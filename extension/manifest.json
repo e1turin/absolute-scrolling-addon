@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Absolute Scrolling",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Hold the middle mouse button and move to scroll proportionally through a page. Stop moving, stop scrolling.",
   "browser_specific_settings": {
     "gecko": {
@@ -11,7 +11,8 @@
     },
     "gecko_android": { "strict_min_version": "142.0" }
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
+  "background": { "scripts": ["background.js"] },
   "icons": { "48": "icons/scroll.svg", "96": "icons/scroll.svg" },
   "action": {
     "default_title": "Absolute Scrolling",
@@ -20,7 +21,7 @@
   },
   "content_scripts": [{
     "matches": ["<all_urls>"],
-    "js": ["settings.js", "content.js"],
+    "js": ["settings.js", "patterns.js", "content.js"],
     "css": ["content.css"],
     "run_at": "document_start",
     "all_frames": true,

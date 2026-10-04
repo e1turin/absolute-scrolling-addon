@@ -33,6 +33,7 @@ before(async () => {
     .setEnvironment({ ...process.env, MOZ_APP_DATA: appData, MOZ_LOCAL_APP_DATA: appData });
   if (process.env.GECKODRIVER_LOG) service.enableVerboseLogging().setStdio("inherit");
   driver = await new Builder().forBrowser("firefox").setFirefoxOptions(options).setFirefoxService(service).build();
+  await driver.manage().setTimeouts({ pageLoad: 15_000, script: 10_000 });
   await driver.manage().window().setRect({ width: 1200, height: 950 });
   assert.equal(await driver.installAddon(resolve("extension"), true), extensionId);
 }, { timeout: 120_000 });
@@ -43,6 +44,7 @@ after(async () => {
 });
 
 beforeEach(async () => {
+  await driver.setContext(firefox.Context.CONTENT);
   await driver.get(url);
   await driver.actions().clear();
   await driver.executeScript("window.scrollTo({ top: 0, behavior: 'instant' })");
@@ -57,6 +59,45 @@ const press = () => driver.actions().press(Button.MIDDLE).perform();
 const release = () => driver.actions().release(Button.MIDDLE).perform();
 const active = () => driver.executeScript("return document.documentElement.hasAttribute('data-absolute-scrolling-active')");
 const near = (actual, expected, message) => assert.ok(Math.abs(actual - expected) <= 2, `${message}: expected ${expected}, got ${actual}`);
+
+async function openSettingsTab() {
+  await driver.switchTo().newWindow("tab");
+  const handle = await driver.getWindowHandle();
+  await driver.setContext(firefox.Context.CHROME);
+  await driver.executeScript(`
+    gBrowser.selectedBrowser.loadURI(Services.io.newURI(arguments[0]), {
+      triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
+    });
+  `, popupUrl);
+  await driver.setContext(firefox.Context.CONTENT);
+  await driver.wait(async () => (await driver.getCurrentUrl()) === popupUrl, 3000);
+  await driver.wait(async () => (await driver.findElement(By.id("enabled"))).isEnabled(), 3000);
+  return handle;
+}
+
+async function openSettingsForPage() {
+  const pageUrl = await driver.getCurrentUrl();
+  const controller = await openSettingsTab();
+  const handles = await driver.getAllWindowHandles();
+  // Firefox WebDriver cannot enter a remote toolbar popup. Open its unmodified
+  // page in a background tab so initialization reads the actual active webpage,
+  // just as it does when the toolbar opens it, then switch there to test controls.
+  await driver.executeScript(`
+    return (async () => {
+      const tabs = await browser.tabs.query({ currentWindow: true });
+      const page = tabs.find(tab => tab.url === arguments[0]);
+      await browser.tabs.update(page.id, { active: true });
+      await browser.tabs.create({ url: arguments[1], active: false });
+    })();
+  `, pageUrl, popupUrl);
+  await driver.sleep(200);
+  const handle = (await driver.getAllWindowHandles()).find(value => !handles.includes(value));
+  await driver.switchTo().window(controller);
+  await driver.close();
+  await driver.switchTo().window(handle);
+  await driver.wait(async () => (await driver.findElement(By.id("enabled"))).isEnabled(), 3000);
+  return handle;
+}
 
 test("20% viewport movement maps to 20% of the full scroll range and stays still", async () => {
   const { height, range } = await metrics();
@@ -220,7 +261,7 @@ test("the extension is injected into frames and uses the frame viewport", async 
   `);
   const frame = await driver.findElement(By.css("iframe"));
   await driver.switchTo().frame(frame);
-  await driver.wait(async () => (await metrics()).range > 1000, 3000);
+  await driver.wait(async () => (await metrics())?.range > 1000, 3000);
   await driver.sleep(100);
   const { height, range } = await metrics();
   await moveTo(50, 180);
@@ -240,21 +281,194 @@ test("non-scrollable documents leave middle mouse untouched", async () => {
   await release();
 });
 
+test("horizontal document movement maps to full width and reverses without drift", async () => {
+  await driver.executeScript("document.body.style.width = '5000px'");
+  const { width, range } = await driver.executeScript("return { width: innerWidth, range: document.scrollingElement.scrollWidth - document.scrollingElement.clientWidth }");
+  const delta = Math.round(width * 0.2);
+  await moveTo(50, 130);
+  await press();
+  await moveTo(50 + delta, 130);
+  const x = await driver.executeScript("return scrollX");
+  near(x, 0.2 * range, "horizontal mapping");
+  near(await position(), 0, "horizontal movement must not move vertically");
+  await driver.sleep(250);
+  near(await driver.executeScript("return scrollX"), x, "stationary horizontal hold");
+  await moveTo(50, 130);
+  near(await driver.executeScript("return scrollX"), 0, "horizontal anchor");
+  await release();
+  await moveTo(50 + delta, 130);
+  near(await driver.executeScript("return scrollX"), 0, "horizontal release");
+});
+
+test("diagonal gestures use each axis's range and viewport dimension", async () => {
+  await driver.executeScript("document.body.style.width = '5000px'");
+  const data = await driver.executeScript("return { width: innerWidth, height: innerHeight, x: document.scrollingElement.scrollWidth - document.scrollingElement.clientWidth, y: document.scrollingElement.scrollHeight - document.scrollingElement.clientHeight }");
+  await moveTo(50, 130);
+  await press();
+  await moveTo(170, 230);
+  near(await driver.executeScript("return scrollX"), 120 / data.width * data.x, "diagonal x");
+  near(await position(), 100 / data.height * data.y, "diagonal y");
+  await release();
+});
+
+test("horizontal-only nested panels are selected and never chain to the outer document", async () => {
+  await driver.executeScript(`
+    const panel = document.querySelector('#nested');
+    panel.style.cssText = 'overflow-x:auto;overflow-y:hidden';
+    panel.replaceChildren();
+    const content = document.createElement('div');
+    content.style.cssText = 'width:2000px;height:100px';
+    panel.append(content);
+  `);
+  const data = await driver.executeScript("const panel = document.querySelector('#nested'), rect = panel.getBoundingClientRect(); return { x:rect.x+30, y:rect.y+40, range:panel.scrollWidth-panel.clientWidth, width:innerWidth }");
+  await moveTo(data.x, data.y);
+  await press();
+  await moveTo(data.x + 100, data.y + 40);
+  near(await driver.executeScript("return document.querySelector('#nested').scrollLeft"), 100 / data.width * data.range, "nested horizontal mapping");
+  near(await position(), 0, "outer vertical unchanged");
+  await release();
+});
+
+test("RTL horizontal ranges support negative scrollLeft and clamp at the far edge", async () => {
+  await driver.executeScript(`
+    const panel = document.querySelector('#nested');
+    panel.style.cssText = 'position:fixed;left:80px;top:120px;width:400px;overflow-x:auto;overflow-y:hidden;direction:rtl';
+    panel.replaceChildren();
+    const content = document.createElement('div');
+    content.style.cssText = 'width:2000px;height:100px';
+    panel.append(content);
+  `);
+  const { width, range } = await driver.executeScript("const panel = document.querySelector('#nested'); return { width:innerWidth, range:panel.scrollWidth-panel.clientWidth }");
+  await moveTo(350, 180);
+  await press();
+  await moveTo(230, 180);
+  near(await driver.executeScript("return document.querySelector('#nested').scrollLeft"), -120 / width * range, "RTL negative mapping");
+  await moveTo(350, 180);
+  near(await driver.executeScript("return document.querySelector('#nested').scrollLeft"), 0, "RTL anchor");
+  await release();
+  await driver.executeScript("document.querySelector('#nested').scrollLeft = arguments[0]", -range * 0.95);
+  await moveTo(350, 180);
+  await press();
+  await moveTo(100, 180);
+  near(await driver.executeScript("return document.querySelector('#nested').scrollLeft"), -range, "RTL end clamp");
+  await release();
+});
+
+test("popup patterns validate, persist, disable matching pages, and re-enable them on removal", async () => {
+  const pageHandle = await driver.getWindowHandle();
+  const popupHandle = await openSettingsTab();
+  const input = await driver.findElement(By.id("pattern"));
+  await input.sendKeys("https://", Key.ENTER);
+  assert.equal(await driver.findElement(By.id("pattern-error")).isDisplayed(), true);
+  await input.clear();
+  await input.sendKeys(`${url}/`, Key.ENTER);
+  await driver.wait(async () => (await driver.findElements(By.css("#patterns li"))).length === 1, 3000);
+  await driver.findElement(By.id("sensitivity")).sendKeys(Key.END);
+  await driver.navigate().refresh();
+  await driver.wait(async () => (await driver.findElements(By.css("#patterns li"))).length === 1, 3000);
+  await driver.switchTo().window(pageHandle);
+  await moveTo(50, 130);
+  await press();
+  assert.equal(await active(), false, "saved rule applies to an already-open page");
+  await release();
+  await driver.actions().sendKeys(Key.ESCAPE).perform();
+  await driver.get(`${url}/link`);
+  await driver.sleep(100);
+  await moveTo(50, 130);
+  await press();
+  assert.equal(await active(), true, "another path remains enabled");
+  await release();
+  await driver.get(`${url}/?view=2#section`);
+  await driver.sleep(100);
+  await moveTo(50, 130);
+  await press();
+  assert.equal(await active(), false, "query and fragment do not bypass the exclusion");
+  await release();
+  await driver.actions().sendKeys(Key.ESCAPE).perform();
+  await driver.switchTo().window(popupHandle);
+  await driver.findElement(By.css("#patterns button")).click();
+  await driver.wait(async () => (await driver.findElements(By.css("#patterns li"))).length === 0, 3000);
+  await driver.executeScript("return browser.storage.local.set({ sensitivity: 1 })");
+  await driver.close();
+  await driver.switchTo().window(pageHandle);
+  await moveTo(50, 130);
+  await press();
+  assert.equal(await active(), true, "removing a rule re-enables the current page immediately");
+  await release();
+});
+
+test("current-page shortcuts add removable page and whole-site rules", async () => {
+  await driver.get(`${url}/link?view=2#section`);
+  const pageHandle = await driver.getWindowHandle();
+  await openSettingsForPage();
+  assert.equal(await driver.findElement(By.id("pattern")).getAttribute("value"), `${url}/link`);
+  await driver.findElement(By.id("disable-page")).click();
+  await driver.wait(async () => (await driver.findElement(By.id("page-state")).getText()) === "Disabled on this page", 3000);
+  assert.equal(await driver.findElement(By.css("#patterns code")).getText(), `${url}/link`);
+  await driver.close();
+  await driver.switchTo().window(pageHandle);
+  await moveTo(50, 130);
+  await press();
+  assert.equal(await active(), false);
+  await release();
+  await driver.actions().sendKeys(Key.ESCAPE).perform();
+  await openSettingsForPage();
+  await driver.findElement(By.css("#patterns button")).click();
+  await driver.wait(async () => (await driver.findElements(By.css("#patterns li"))).length === 0, 3000);
+  await driver.findElement(By.id("disable-site")).click();
+  await driver.wait(async () => (await driver.findElement(By.css("#patterns code")).getText()) === `${url.replace('http:', '*:')}/*`, 3000);
+  await driver.findElement(By.css("#patterns button")).click();
+  await driver.wait(async () => (await driver.findElements(By.css("#patterns li"))).length === 0, 3000);
+  await driver.close();
+  await driver.switchTo().window(pageHandle);
+});
+
+test("exclusions cover cross-origin frames and follow single-page app navigation", async () => {
+  const pageHandle = await driver.getWindowHandle();
+  const popupHandle = await openSettingsTab();
+  await driver.executeScript("return browser.storage.local.set({ disabledPatterns: [arguments[0]] })", `${url}/link`);
+  await driver.switchTo().window(pageHandle);
+  const crossOrigin = url.replace("127.0.0.1", "localhost");
+  await driver.executeScript(`
+    const frame = document.createElement('iframe');
+    frame.src = arguments[0] + '/frame';
+    frame.style.cssText = 'position:fixed;left:20px;top:80px;width:600px;height:650px;z-index:5';
+    document.body.append(frame);
+  `, crossOrigin);
+  await driver.switchTo().frame(await driver.findElement(By.css("iframe")));
+  await driver.wait(async () => (await metrics())?.range > 1000, 3000);
+  await driver.sleep(150);
+  await moveTo(50, 180);
+  await press();
+  assert.equal(await active(), true);
+  await release();
+  await driver.switchTo().defaultContent();
+  await driver.executeScript("history.pushState({}, '', '/link')");
+  await driver.sleep(150);
+  await driver.switchTo().frame(await driver.findElement(By.css("iframe")));
+  await moveTo(50, 180);
+  await press();
+  assert.equal(await active(), false, "the excluded top URL disables its cross-origin frame");
+  await release();
+  await driver.actions().sendKeys(Key.ESCAPE).perform();
+  await driver.switchTo().defaultContent();
+  await driver.executeScript("history.pushState({}, '', '/')");
+  await driver.sleep(150);
+  await driver.switchTo().frame(await driver.findElement(By.css("iframe")));
+  await moveTo(50, 180);
+  await press();
+  assert.equal(await active(), true, "leaving an excluded SPA route re-enables the frame");
+  await release();
+  await driver.switchTo().defaultContent();
+  await driver.switchTo().window(popupHandle);
+  await driver.executeScript("return browser.storage.local.set({ disabledPatterns: [] })");
+  await driver.close();
+  await driver.switchTo().window(pageHandle);
+});
+
 test("popup preferences persist and immediately apply to already-open pages", async () => {
   const pageHandle = await driver.getWindowHandle();
-  await driver.switchTo().newWindow("tab");
-  const popupHandle = await driver.getWindowHandle();
-  // WebDriver blocks direct moz-extension navigation from content context.
-  // Use the browser's own navigation in this disposable test profile.
-  await driver.setContext(firefox.Context.CHROME);
-  await driver.executeScript(`
-    gBrowser.selectedBrowser.loadURI(Services.io.newURI(arguments[0]), {
-      triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
-    });
-  `, popupUrl);
-  await driver.setContext(firefox.Context.CONTENT);
-  await driver.wait(async () => (await driver.getCurrentUrl()) === popupUrl, 3000);
-  await driver.wait(async () => (await driver.findElement(By.id("enabled"))).isEnabled(), 3000);
+  const popupHandle = await openSettingsTab();
   await driver.findElement(By.id("enabled")).click();
   await driver.wait(async () => (await driver.findElement(By.id("status")).getText()) === "Scrolling paused", 3000);
   await driver.switchTo().window(pageHandle);
@@ -282,6 +496,8 @@ test("popup preferences persist and immediately apply to already-open pages", as
   await driver.wait(async () => (await driver.findElement(By.id("enabled"))).isEnabled(), 3000);
   await mkdir("test-results", { recursive: true });
   await writeFile("test-results/popup.png", await driver.takeScreenshot(), "base64");
+  await driver.executeScript("document.body.scrollTop = document.body.scrollHeight");
+  await writeFile("test-results/popup-patterns.png", await driver.takeScreenshot(), "base64");
   await driver.close();
   await driver.switchTo().window(pageHandle);
   await driver.get(url);

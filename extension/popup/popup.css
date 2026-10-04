@@ -1,6 +1,6 @@
 :root { color-scheme: light dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; color: #203a35; background: #f8faf5; }
 * { box-sizing: border-box; }
-body { width: 330px; margin: 0; }
+body { width: 360px; max-height: 600px; margin: 0; overflow-y: auto; }
 header { display: flex; align-items: center; gap: 11px; padding: 23px 22px 20px; border-bottom: 1px solid #dce3d5; }
 h1 { margin: 0 0 4px; font-size: 17px; letter-spacing: -.5px; }
 header p { margin: 0; font-size: 11px; color: #667568; }
@@ -10,9 +10,9 @@ main { padding: 20px 22px 8px; }
 #enabled::before { content: ""; display: block; width: 15px; height: 15px; margin: 3px; background: #fff; border-radius: 50%; }
 #enabled:checked { background: #2c6046; }
 #enabled:checked::before { transform: translateX(15px); }
-input:focus-visible { outline: 2px solid #397b4e; outline-offset: 4px; }
+input:focus-visible, button:focus-visible { outline: 2px solid #397b4e; outline-offset: 4px; }
 input:disabled { opacity: .5; cursor: default; }
-.mapping { display: flex; align-items: center; justify-content: space-between; padding: 22px 17px; margin: 22px 0; border-radius: 12px; background: #eaf1df; }
+.mapping { display: flex; align-items: center; justify-content: space-between; padding: 14px 17px; margin: 18px 0; border-radius: 12px; background: #eaf1df; }
 .mapping strong { display: block; font-size: 36px; font-weight: 550; letter-spacing: -2px; }
 .mapping strong span { font-size: 19px; margin-left: 2px; }
 .mapping small { font-size: 10px; color: #64715a; }
@@ -24,11 +24,34 @@ output { font-variant-numeric: tabular-nums; color: #507037; }
 .secondary { margin-top: 10px; color: #71806d; font-size: 11px; }
 #status { min-height: 16px; font-size: 11px; color: #507037; }
 footer { border-top: 1px solid #dce3d5; padding: 13px 22px; font-size: 10px; color: #71806d; }
+.exclusions { border-top: 1px solid #dce3d5; margin-top: 15px; padding-top: 18px; }
+h2 { margin: 0; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+#pattern-count { font-size: 11px; font-weight: 400; border-radius: 12px; padding: 2px 7px; background: #eaf1df; }
+#page-state { font-size: 11px; margin: 9px 0 13px; color: #507037; }
+.page-actions { display: flex; gap: 8px; margin-bottom: 17px; }
+button { font: inherit; font-size: 11px; font-weight: 600; padding: 8px 10px; border: 1px solid #cedbc1; border-radius: 6px; color: #2a5138; background: #eef3e6; cursor: pointer; }
+button:hover:not(:disabled) { background: #dce9cd; }
+button:disabled { opacity: .5; cursor: default; }
+#pattern-form label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 7px; }
+.pattern-entry { display: flex; gap: 7px; }
+#pattern { width: 100%; min-width: 0; padding: 8px; border: 1px solid #cedbc1; border-radius: 6px; background: #fff; color: #203a35; font: 11px monospace; }
+#pattern-help, #empty-patterns { font-size: 10px; line-height: 1.6; color: #71806d; }
+#pattern-error { color: #a02e29; font-size: 11px; line-height: 1.5; }
+#patterns { list-style: none; padding: 0; margin: 13px 0; max-height: 150px; overflow-y: auto; }
+#patterns li { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #dce3d5; padding: 9px 0; }
+#patterns code { font-size: 10px; overflow-wrap: anywhere; min-width: 0; }
+#patterns button { flex-shrink: 0; padding: 5px 7px; font-size: 10px; }
 @media (prefers-color-scheme: dark) {
   :root { color: #e1eadb; background: #192923; }
-  header, footer { border-color: #35483c; }
+  header, footer, .exclusions, #patterns li { border-color: #35483c; }
   header p, .secondary, .range-labels, footer { color: #a1b49b; }
   .mapping { background: #293e30; }
   .mapping small { color: #b0c59f; }
   output, #status { color: #b9e878; }
+  #pattern-count, button { color: #d4e4c9; background: #293e30; border-color: #456044; }
+  button:hover:not(:disabled) { background: #354c39; }
+  #pattern { color: #e1eadb; background: #20342a; border-color: #456044; }
+  #page-state { color: #b9e878; }
+  #pattern-help, #empty-patterns { color: #a1b49b; }
+  #pattern-error { color: #ffaca3; }
 }
