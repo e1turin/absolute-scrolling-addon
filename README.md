@@ -2,7 +2,7 @@
 
 Licensed under the [MIT License](LICENSE).
 
-A Firefox extension for proportional middle-mouse scrolling in both directions. Hold the middle mouse button: moving **20% of the viewport height moves 20% of the vertical scroll range**, and moving **20% of the viewport width moves 20% of the horizontal range** at the default sensitivity. Diagonal movement scrolls both axes. Stop moving and the page stays still.
+A Firefox extension for proportional middle-mouse scrolling in both directions. Hold the middle mouse button: moving **20% of the viewport height moves 20% of the vertical scroll range**, while the default 4× horizontal multiplier moves **80% of the horizontal range** for 20% of the viewport width. Diagonal movement scrolls both axes. Stop moving and the page stays still.
 
 ## Try it in Firefox
 
@@ -13,9 +13,9 @@ Requires desktop Firefox 140 or later and a mouse with a middle button. No build
 3. Select `extension/manifest.json` from this project.
 4. Open or reload a normal webpage. Hold the middle button over page content and move in any direction.
 
-Use the extension's toolbar panel to pause scrolling or adjust sensitivity from 0.25× to 2×. Preferences are saved locally and apply to already-open pages.
+Use the toolbar panel to pause scrolling or set independent vertical and horizontal multipliers. Both are decimal inputs from 0.25× to 20× in 0.25× steps; vertical defaults to 1× and horizontal to 4×. Preferences are saved locally and apply to already-open pages.
 
-When updating a temporary installation, click **Reload** next to Absolute Scrolling in `about:debugging`, then reload your webpages. Version 0.2 adds the `tabs` permission so the popup can read the active URL and page exclusions can also cover cross-origin frames.
+When updating a temporary installation, click **Reload** next to Absolute Scrolling in `about:debugging`, then reload your webpages. Version 0.3 uses separate vertical and horizontal multipliers, retains the old multiplier as the vertical value, and gives horizontal scrolling its new 4× default. The extension also uses the `tabs` permission so the popup can read the active URL and page exclusions can cover cross-origin frames.
 
 Temporary add-ons are removed when Firefox restarts. For permanent installation in standard Firefox, the extension must be signed by Mozilla; the build command below produces an **unsigned** archive suitable for submission. See Mozilla's [temporary installation guide](https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/) and [signing and distribution guide](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/).
 
@@ -28,16 +28,16 @@ Temporary add-ons are removed when Firefox restarts. For permanent installation 
 - Release, press Escape, leave the page, or change focus to end the gesture.
 - Release and start another drag if you run out of physical cursor space.
 
-At 1× sensitivity:
+At the default 1× vertical and 4× horizontal multipliers:
 
 ```text
 verticalRange   = scrollHeight - clientHeight
 horizontalRange = scrollWidth - clientWidth
 scrollTop  = clamp(startScrollTop  + (cursorY - startY) / viewportHeight * verticalRange)
-scrollLeft = clamp(startScrollLeft + (cursorX - startX) / viewportWidth  * horizontalRange)
+scrollLeft = clamp(startScrollLeft + (cursorX - startX) / viewportWidth  * horizontalRange * 4)
 ```
 
-The calculation uses viewport coordinates (`clientX`/`clientY`), so scrolling the document does not move the anchor. It always calculates from the original press, avoiding accumulated error and drift. Scroll ranges and viewport dimensions are captured at the start of each gesture so infinite-scroll content cannot suddenly change the scale. Start another gesture to use a newly expanded range.
+The calculation uses viewport coordinates (`clientX`/`clientY`), so scrolling the document does not move the anchor. It always calculates from the original press, avoiding accumulated error and drift. Scroll ranges and viewport dimensions are captured at the start of each gesture so infinite-scroll content cannot suddenly change the scale. Start another gesture to use a newly expanded range. Change either multiplier without affecting the other axis.
 
 ## Disable on specific pages
 
@@ -106,6 +106,6 @@ scripts/             Local demo server
 
 ## Privacy and permissions
 
-The extension makes no network requests and transmits no data. It uses `storage` for the enabled state, sensitivity, and URL patterns you choose to disable. The `tabs` permission reads the active page URL for the popup and tracks a tab's current URL so exclusions also apply inside frames and after in-page navigation. Its content script matches all URLs so the gesture can work on supported pages; Firefox may describe this as access to website data. No browsing history, page content, or mouse positions are stored. URL patterns stay in local extension storage. The manifest declares no data collection using Firefox's [built-in data consent format](https://extensionworkshop.com/documentation/develop/firefox-builtin-data-consent/).
+The extension makes no network requests and transmits no data. It uses `storage` for the enabled state, the two movement multipliers, and URL patterns you choose to disable. The `tabs` permission reads the active page URL for the popup and tracks a tab's current URL so exclusions also apply inside frames and after in-page navigation. Its content script matches all URLs so the gesture can work on supported pages; Firefox may describe this as access to website data. No browsing history, page content, or mouse positions are stored. URL patterns stay in local extension storage. The manifest declares no data collection using Firefox's [built-in data consent format](https://extensionworkshop.com/documentation/develop/firefox-builtin-data-consent/).
 
 The included development ID is `absolute-scrolling@extensions.local`. Choose your own permanent extension ID before the first Mozilla submission.

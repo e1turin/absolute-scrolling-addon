@@ -1,11 +1,12 @@
 "use strict";
 
-const { defaults, normalize } = globalThis.AbsoluteScrollingSettings;
+const { defaults, storageDefaults, normalize } = globalThis.AbsoluteScrollingSettings;
 const patterns = globalThis.AbsoluteScrollingPatterns;
 const enabled = document.querySelector("#enabled");
-const sensitivity = document.querySelector("#sensitivity");
-const sensitivityValue = document.querySelector("#sensitivity-value");
-const mappedValue = document.querySelector("#mapped-value");
+const verticalSensitivity = document.querySelector("#vertical-sensitivity");
+const horizontalSensitivity = document.querySelector("#horizontal-sensitivity");
+const verticalMappedValue = document.querySelector("#vertical-mapped-value");
+const horizontalMappedValue = document.querySelector("#horizontal-mapped-value");
 const status = document.querySelector("#status");
 const patternInput = document.querySelector("#pattern");
 const patternError = document.querySelector("#pattern-error");
@@ -18,13 +19,22 @@ let pagePattern = null;
 let sitePattern = null;
 let savingPatterns = false;
 
-function renderSensitivity() {
-  sensitivityValue.textContent = `${Number(sensitivity.value)}×`;
-  mappedValue.replaceChildren(document.createTextNode(String(20 * Number(sensitivity.value))));
+function sensitivityValue(input, fallback) {
+  return input.validity.valid && Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : fallback;
+}
+
+function setPercent(output, value) {
+  output.replaceChildren(document.createTextNode(String(20 * value)));
   const percent = document.createElement("span");
   percent.textContent = "%";
-  mappedValue.append(percent);
-  sensitivity.disabled = !enabled.checked;
+  output.append(percent);
+}
+
+function renderSensitivities() {
+  setPercent(verticalMappedValue, sensitivityValue(verticalSensitivity, settings.verticalSensitivity));
+  setPercent(horizontalMappedValue, sensitivityValue(horizontalSensitivity, settings.horizontalSensitivity));
+  verticalSensitivity.disabled = !enabled.checked;
+  horizontalSensitivity.disabled = !enabled.checked;
 }
 
 function renderPatterns() {
@@ -61,12 +71,22 @@ function showPatternError(message = "") {
 }
 
 async function savePreferences() {
-  renderSensitivity();
-  const patch = { enabled: enabled.checked, sensitivity: Number(sensitivity.value) };
+  if (!verticalSensitivity.validity.valid || !horizontalSensitivity.validity.valid) {
+    status.textContent = "Use a value from 0.25× to 20× in 0.25× steps.";
+    return;
+  }
+  const patch = {
+    enabled: enabled.checked,
+    verticalSensitivity: verticalSensitivity.valueAsNumber,
+    horizontalSensitivity: horizontalSensitivity.valueAsNumber,
+  };
   try {
     // Update only these fields so a preference edit can never erase exclusions.
     await browser.storage.local.set(patch);
     settings = normalize({ ...settings, ...patch });
+    verticalSensitivity.value = settings.verticalSensitivity;
+    horizontalSensitivity.value = settings.horizontalSensitivity;
+    renderSensitivities();
     renderPatterns();
     status.textContent = settings.enabled ? "Ready on supported pages" : "Scrolling paused";
   } catch (error) {
@@ -105,7 +125,7 @@ async function addPattern(value) {
 }
 
 async function initialize() {
-  const saved = await browser.storage.local.get(defaults);
+  const saved = await browser.storage.local.get(storageDefaults);
   settings = normalize(saved);
   try {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -117,10 +137,11 @@ async function initialize() {
   } catch { /* Custom patterns remain available on inaccessible pages. */ }
   enabled.checked = settings.enabled;
   enabled.disabled = false;
-  sensitivity.value = settings.sensitivity;
+  verticalSensitivity.value = settings.verticalSensitivity;
+  horizontalSensitivity.value = settings.horizontalSensitivity;
   patternInput.disabled = false;
   patternInput.value = pagePattern || "";
-  renderSensitivity();
+  renderSensitivities();
   renderPatterns();
   status.textContent = settings.enabled ? "Ready on supported pages" : "Scrolling paused";
 }
@@ -130,8 +151,10 @@ initialize().catch(() => {
 });
 
 enabled.addEventListener("change", savePreferences);
-sensitivity.addEventListener("input", renderSensitivity);
-sensitivity.addEventListener("change", savePreferences);
+verticalSensitivity.addEventListener("input", renderSensitivities);
+horizontalSensitivity.addEventListener("input", renderSensitivities);
+verticalSensitivity.addEventListener("change", savePreferences);
+horizontalSensitivity.addEventListener("change", savePreferences);
 patternInput.addEventListener("input", () => showPatternError());
 document.querySelector("#pattern-form").addEventListener("submit", (event) => {
   event.preventDefault();

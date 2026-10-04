@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Absolute Scrolling",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Hold the middle mouse button and move to scroll proportionally through a page. Stop moving, stop scrolling.",
   "browser_specific_settings": {
     "gecko": {

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const { defaults, normalize } = globalThis.AbsoluteScrollingSettings;
+  const { defaults, storageDefaults, normalize } = globalThis.AbsoluteScrollingSettings;
   const { compile } = globalThis.AbsoluteScrollingPatterns;
   const ignoredSelector = [
     "a[href]", "area[href]", "input", "textarea", "select", "button",
@@ -16,7 +16,7 @@
   let isExcluded = compile([]);
 
   Promise.all([
-    browser.storage.local.get(defaults),
+    browser.storage.local.get(storageDefaults),
     window === window.top ? pageUrl : browser.runtime.sendMessage({ type: "absolute-scrolling:get-page-url" }),
   ]).then(([saved, topUrl]) => {
     settings = normalize(saved);
@@ -140,8 +140,8 @@
       startScrollTop: scroller.scrollTop,
       startScrollLeft: scroller.scrollLeft,
       // Freeze the scale until release so lazy-loaded content cannot change it mid-drag.
-      scaleX: axes.x ? bounds(scroller, "x").range / window.innerWidth * settings.sensitivity : 0,
-      scaleY: axes.y ? bounds(scroller, "y").range / window.innerHeight * settings.sensitivity : 0,
+      scaleX: axes.x ? bounds(scroller, "x").range / window.innerWidth * settings.horizontalSensitivity : 0,
+      scaleY: axes.y ? bounds(scroller, "y").range / window.innerHeight * settings.verticalSensitivity : 0,
       restore: overrideStyles(scroller),
     };
     document.documentElement.setAttribute("data-absolute-scrolling-active", axes.x && axes.y ? "xy" : axes.x ? "x" : "y");

@@ -57,8 +57,20 @@ test("invalid rules cannot accidentally disable unrelated pages", () => {
   assert.equal(patterns.compile(["bad rule", "https://"])("https://example.com/"), false);
 });
 
-test("existing settings migrate without losing enabled state or sensitivity", () => {
+test("existing settings preserve their vertical multiplier and gain the faster horizontal default", () => {
   assert.deepEqual(globalThis.AbsoluteScrollingSettings.normalize({ enabled: false, sensitivity: 0.5 }), {
-    enabled: false, sensitivity: 0.5, disabledPatterns: [],
+    enabled: false,
+    verticalSensitivity: 0.5,
+    horizontalSensitivity: 4,
+    disabledPatterns: [],
+  });
+});
+
+test("multipliers are constrained to quarter steps and safe bounds", () => {
+  assert.deepEqual(globalThis.AbsoluteScrollingSettings.normalize({ verticalSensitivity: 1.13, horizontalSensitivity: 99 }), {
+    enabled: true,
+    verticalSensitivity: 1.25,
+    horizontalSensitivity: 20,
+    disabledPatterns: [],
   });
 });

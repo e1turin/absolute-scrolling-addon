@@ -19,14 +19,20 @@
         <span>Middle-button scrolling</span>
         <input id="enabled" type="checkbox" role="switch" disabled>
       </label>
-      <section class="mapping" aria-label="How scrolling works">
+      <section class="mapping" aria-label="Default motion mapping">
         <div><strong>20<span>%</span></strong><small>cursor movement</small></div>
         <span class="arrow" aria-hidden="true">→</span>
-        <div><strong id="mapped-value">20<span>%</span></strong><small>of scroll range</small></div>
+        <div><strong id="vertical-mapped-value">20<span>%</span></strong><small>vertical range</small></div>
+        <div><strong id="horizontal-mapped-value">80<span>%</span></strong><small>horizontal range</small></div>
       </section>
-      <div class="sensitivity-label"><label for="sensitivity">Sensitivity</label><output id="sensitivity-value" for="sensitivity">1×</output></div>
-      <input id="sensitivity" type="range" min="0.25" max="2" step="0.25" value="1" disabled>
-      <div class="range-labels"><span>Precise · 0.25×</span><span>Fast · 2×</span></div>
+      <section class="sensitivities" aria-labelledby="sensitivity-heading">
+        <h2 id="sensitivity-heading">Movement multiplier</h2>
+        <p>Use arrow keys or type any value from 0.25× to 20×. Each step is 0.25×.</p>
+        <div class="sensitivity-inputs">
+          <label for="vertical-sensitivity">Vertical <span class="input-wrap"><input id="vertical-sensitivity" type="number" min="0.25" max="20" step="0.25" value="1" inputmode="decimal" disabled></span></label>
+          <label for="horizontal-sensitivity">Horizontal <span class="input-wrap"><input id="horizontal-sensitivity" type="number" min="0.25" max="20" step="0.25" value="4" inputmode="decimal" disabled></span></label>
+        </div>
+      </section>
       <p id="status" role="status" aria-live="polite">Loading settings…</p>
       <section class="exclusions" aria-labelledby="exclusions-title">
         <h2 id="exclusions-title">Disabled pages <span id="pattern-count">0</span></h2>

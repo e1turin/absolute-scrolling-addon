@@ -59,6 +59,12 @@ const press = () => driver.actions().press(Button.MIDDLE).perform();
 const release = () => driver.actions().release(Button.MIDDLE).perform();
 const active = () => driver.executeScript("return document.documentElement.hasAttribute('data-absolute-scrolling-active')");
 const near = (actual, expected, message) => assert.ok(Math.abs(actual - expected) <= 2, `${message}: expected ${expected}, got ${actual}`);
+const setNumberInput = (id, value) => driver.executeScript(`
+  const input = document.getElementById(arguments[0]);
+  input.value = arguments[1];
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+`, id, String(value));
 
 async function openSettingsTab() {
   await driver.switchTo().newWindow("tab");
@@ -289,7 +295,7 @@ test("horizontal document movement maps to full width and reverses without drift
   await press();
   await moveTo(50 + delta, 130);
   const x = await driver.executeScript("return scrollX");
-  near(x, 0.2 * range, "horizontal mapping");
+  near(x, 0.2 * range * 4, "default 4× horizontal mapping");
   near(await position(), 0, "horizontal movement must not move vertically");
   await driver.sleep(250);
   near(await driver.executeScript("return scrollX"), x, "stationary horizontal hold");
@@ -306,7 +312,7 @@ test("diagonal gestures use each axis's range and viewport dimension", async () 
   await moveTo(50, 130);
   await press();
   await moveTo(170, 230);
-  near(await driver.executeScript("return scrollX"), 120 / data.width * data.x, "diagonal x");
+  near(await driver.executeScript("return scrollX"), 120 / data.width * data.x * 4, "diagonal x");
   near(await position(), 100 / data.height * data.y, "diagonal y");
   await release();
 });
@@ -324,7 +330,7 @@ test("horizontal-only nested panels are selected and never chain to the outer do
   await moveTo(data.x, data.y);
   await press();
   await moveTo(data.x + 100, data.y + 40);
-  near(await driver.executeScript("return document.querySelector('#nested').scrollLeft"), 100 / data.width * data.range, "nested horizontal mapping");
+  near(await driver.executeScript("return document.querySelector('#nested').scrollLeft"), 100 / data.width * data.range * 4, "nested horizontal mapping");
   near(await position(), 0, "outer vertical unchanged");
   await release();
 });
@@ -342,7 +348,7 @@ test("RTL horizontal ranges support negative scrollLeft and clamp at the far edg
   await moveTo(350, 180);
   await press();
   await moveTo(230, 180);
-  near(await driver.executeScript("return document.querySelector('#nested').scrollLeft"), -120 / width * range, "RTL negative mapping");
+  near(await driver.executeScript("return document.querySelector('#nested').scrollLeft"), -120 / width * range * 4, "RTL negative mapping");
   await moveTo(350, 180);
   near(await driver.executeScript("return document.querySelector('#nested').scrollLeft"), 0, "RTL anchor");
   await release();
@@ -363,7 +369,7 @@ test("popup patterns validate, persist, disable matching pages, and re-enable th
   await input.clear();
   await input.sendKeys(`${url}/`, Key.ENTER);
   await driver.wait(async () => (await driver.findElements(By.css("#patterns li"))).length === 1, 3000);
-  await driver.findElement(By.id("sensitivity")).sendKeys(Key.END);
+  await setNumberInput("horizontal-sensitivity", 8);
   await driver.navigate().refresh();
   await driver.wait(async () => (await driver.findElements(By.css("#patterns li"))).length === 1, 3000);
   await driver.switchTo().window(pageHandle);
@@ -388,7 +394,7 @@ test("popup patterns validate, persist, disable matching pages, and re-enable th
   await driver.switchTo().window(popupHandle);
   await driver.findElement(By.css("#patterns button")).click();
   await driver.wait(async () => (await driver.findElements(By.css("#patterns li"))).length === 0, 3000);
-  await driver.executeScript("return browser.storage.local.set({ sensitivity: 1 })");
+  await driver.executeScript("return browser.storage.local.set({ verticalSensitivity: 1, horizontalSensitivity: 4 })");
   await driver.close();
   await driver.switchTo().window(pageHandle);
   await moveTo(50, 130);
@@ -481,17 +487,26 @@ test("popup preferences persist and immediately apply to already-open pages", as
   await driver.navigate().refresh();
   assert.equal(await driver.findElement(By.id("enabled")).isSelected(), false);
   await driver.findElement(By.id("enabled")).click();
-  await driver.findElement(By.id("sensitivity")).sendKeys(Key.HOME, Key.ARROW_RIGHT); // 0.5×
-  await driver.wait(async () => (await driver.executeScript("return browser.storage.local.get('sensitivity')")).sensitivity === 0.5, 3000);
+  await setNumberInput("vertical-sensitivity", 0.5);
+  await driver.wait(async () => (await driver.executeScript("return browser.storage.local.get('verticalSensitivity')")).verticalSensitivity === 0.5, 3000);
+  await setNumberInput("horizontal-sensitivity", 6.25);
+  await driver.wait(async () => (await driver.executeScript("return browser.storage.local.get('horizontalSensitivity')")).horizontalSensitivity === 6.25, 3000);
   await driver.switchTo().window(pageHandle);
   const { height, range } = await metrics();
   await moveTo(50, 130);
   await press();
   await moveTo(50, 230);
-  near(await position(), 100 / height * range * 0.5, "saved sensitivity");
+  near(await position(), 100 / height * range * 0.5, "saved vertical multiplier");
+  await release();
+  await driver.executeScript("document.body.style.width = '5000px'");
+  const horizontal = await driver.executeScript("return { width: innerWidth, range: document.scrollingElement.scrollWidth - document.scrollingElement.clientWidth }");
+  await moveTo(50, 130);
+  await press();
+  await moveTo(150, 130);
+  near(await driver.executeScript("return scrollX"), 100 / horizontal.width * horizontal.range * 6.25, "saved horizontal multiplier");
   await release();
   await driver.switchTo().window(popupHandle);
-  await driver.executeScript("return browser.storage.local.set({ enabled: true, sensitivity: 1 })");
+  await driver.executeScript("return browser.storage.local.set({ enabled: true, verticalSensitivity: 1, horizontalSensitivity: 4 })");
   await driver.navigate().refresh();
   await driver.wait(async () => (await driver.findElement(By.id("enabled"))).isEnabled(), 3000);
   await mkdir("test-results", { recursive: true });
