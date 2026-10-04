@@ -1,121 +1,89 @@
 # Absolute Scrolling
 
-Licensed under the [MIT License](LICENSE).
+A Firefox extension that turns middle-button dragging into direct page positioning. Cursor displacement maps to the page's full scroll range, so scrolling stops as soon as the cursor stops.
 
-A Firefox extension for proportional middle-mouse scrolling in both directions. Hold the middle mouse button: moving **20% of the viewport height moves 20% of the vertical scroll range**, while the default 4× horizontal multiplier moves **80% of the horizontal range** for 20% of the viewport width. Diagonal movement scrolls both axes. Stop moving and the page stays still.
+## Quick usage
 
-## Try it in Firefox
+1. Hold the middle mouse button over a page or scrollable panel.
+2. Move up or down to scroll vertically, left or right to scroll horizontally, or move diagonally for both.
+3. Stop moving to stop scrolling. Release the button to finish.
 
-Requires desktop Firefox 140 or later and a mouse with a middle button. No build step is needed to load the extension.
+The position where you press is the anchor. Returning the cursor to that point returns the page to its starting position. Press **Escape** to cancel a gesture, or hold **Alt** before pressing the middle button to let the page handle the click normally.
+
+Vertical movement defaults to 1×: moving through 20% of the viewport moves through about 20% of the vertical scroll range. Horizontal movement defaults to 4×, so the same movement covers about 80% of the horizontal range.
+
+Open the toolbar popup to:
+
+- Turn middle-button scrolling on or off.
+- Set separate vertical and horizontal multipliers from 0.25× to 20× in 0.25× steps.
+- Disable the extension on the current page, an entire site, or a custom URL pattern.
+
+## Install
+
+Absolute Scrolling requires desktop Firefox 140 or later and a mouse with a middle button.
+
+### Try a GitHub build
+
+Download the ZIP from a GitHub release, then:
 
 1. Open `about:debugging#/runtime/this-firefox` in Firefox.
 2. Click **Load Temporary Add-on…**.
-3. Select `extension/manifest.json` from this project.
-4. Open or reload a normal webpage. Hold the middle button over page content and move in any direction.
+3. Select the downloaded ZIP.
+4. Open or reload a normal webpage.
 
-Use the toolbar panel to pause scrolling or set independent vertical and horizontal multipliers. Both are decimal inputs from 0.25× to 20× in 0.25× steps; vertical defaults to 1× and horizontal to 4×. Preferences are saved locally and apply to already-open pages.
+The temporary installation is removed when Firefox restarts.
 
-When updating a temporary installation, click **Reload** next to Absolute Scrolling in `about:debugging`, then reload your webpages. Version 0.3 uses separate vertical and horizontal multipliers, retains the old multiplier as the vertical value, and gives horizontal scrolling its new 4× default. The extension also uses the `tabs` permission so the popup can read the active URL and page exclusions can cover cross-origin frames.
+### Try it from source
 
-Temporary add-ons are removed when Firefox restarts. For permanent installation in standard Firefox, the extension must be signed by Mozilla; the build command below produces an **unsigned** archive suitable for submission. See Mozilla's [temporary installation guide](https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/) and [signing and distribution guide](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/).
+Use the same `about:debugging` page, click **Load Temporary Add-on…**, and select `extension/manifest.json` from this repository. After changing the code, click **Reload** beside Absolute Scrolling and reload any open webpages.
 
-## How it feels
+### Install permanently
 
-- Press to anchor at your current cursor and scroll positions. There is no jump on press.
-- Drag down/up to move vertically and right/left to move horizontally. Each available axis maps independently; one-axis containers only move along that axis.
-- Hold your hand still and scrolling stops immediately, even far from the anchor.
-- Return to the original cursor position to return to the original scroll position.
-- Release, press Escape, leave the page, or change focus to end the gesture.
-- Release and start another drag if you run out of physical cursor space.
+Standard Firefox requires extensions to be signed by Mozilla. The GitHub build is unsigned and intended for testing or submission. After obtaining a signed `.xpi`, open `about:addons`, choose **Install Add-on From File** from the settings menu, select the `.xpi`, and confirm **Add**.
 
-At the default 1× vertical and 4× horizontal multipliers:
+See Mozilla's guides for [temporary installation](https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/) and [signing and distribution](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/).
 
-```text
-verticalRange   = scrollHeight - clientHeight
-horizontalRange = scrollWidth - clientWidth
-scrollTop  = clamp(startScrollTop  + (cursorY - startY) / viewportHeight * verticalRange)
-scrollLeft = clamp(startScrollLeft + (cursorX - startX) / viewportWidth  * horizontalRange * 4)
-```
-
-The calculation uses viewport coordinates (`clientX`/`clientY`), so scrolling the document does not move the anchor. It always calculates from the original press, avoiding accumulated error and drift. Scroll ranges and viewport dimensions are captured at the start of each gesture so infinite-scroll content cannot suddenly change the scale. Start another gesture to use a newly expanded range. Change either multiplier without affecting the other axis.
-
-## Disable on specific pages
+## Disable on selected pages
 
 Open the toolbar popup and scroll to **Disabled pages**:
 
-- **Disable this page** saves the current URL's scheme, hostname, and path.
-- **Disable this site** saves `*://hostname/*`, covering HTTP and HTTPS on that hostname.
-- Edit the prefilled **URL pattern** and press **Add** to exclude a group of pages.
-- Click **Remove** beside a saved pattern to enable matching pages again, unless another rule still matches.
+- **Disable this page** excludes the current URL path.
+- **Disable this site** excludes every HTTP and HTTPS page on the current hostname.
+- **URL pattern** lets you exclude a custom group of pages.
+- **Remove** enables matching pages again, unless another saved pattern still matches.
 
-Patterns are saved locally. Adding or removing a rule takes effect on open pages immediately. If a top-level page matches, its embedded frames are disabled too, including frames from other origins. Single-page app navigation updates the match without needing a reload.
+Rules take effect on open pages immediately and stay on your device. Query strings and `#fragments` are ignored.
 
 | Pattern | Matches |
 | --- | --- |
-| `https://example.com/docs/page` | That exact path over HTTPS |
-| `https://example.com/docs/*` | Any path beginning with `/docs/` |
-| `*://example.com/*` | All paths on that hostname, over HTTP or HTTPS |
+| `https://example.com/docs/page` | That exact HTTPS path |
+| `https://example.com/docs/*` | Paths beginning with `/docs/` |
+| `*://example.com/*` | Every HTTP and HTTPS path on that hostname |
 | `*://*.example.com/*` | The hostname and all its subdomains |
 | `file:///path/to/documents/*` | Local files beneath that path |
 
-Query strings and `#fragments` are ignored, and the shortcuts never save them. Paths are case-sensitive. A bare hostname/path such as `example.com/docs/*` is shorthand for `*://example.com/docs/*`. Host wildcards must be `*` or a leading `*.`; path wildcards can appear anywhere. A rule for `example.com` does not match `example.com.evil.test`. This is URL pattern matching, not regular expressions.
+A bare value such as `example.com/docs/*` is shorthand for `*://example.com/docs/*`. Paths are case-sensitive. These are URL patterns, not regular expressions.
 
-## Page compatibility
+## Compatibility
 
-- The nearest scrollable panel is selected under the cursor, including panels in accessible shadow DOM. Otherwise, the document scrolls. The scale uses viewport dimensions, even in a nested panel. Right-to-left horizontal scroll ranges are supported.
-- A gesture stays with its original scroll container. It does not chain to the outer page when it reaches an edge.
-- Matching frames get their own content script and use their own viewport height. Leaving a frame ends its gesture.
-- CSS smooth scrolling is bypassed. Scroll snapping and scroll anchoring are suspended during the gesture, and original styles are restored afterward. A page with mandatory snap points may snap again when released.
-- Middle-clicking links, form controls, editable content, media, canvas, and draggable elements keeps their usual behavior. Hold **Alt** before pressing to bypass the extension anywhere. Ctrl, Shift, and Meta also bypass it.
-- Developers can add `data-absolute-scrolling-ignore` to an element to exclude its subtree.
-- Horizontal, vertical, and diagonal gestures are supported. Normal wheel scrolling and left/right clicks continue to work.
+- The nearest scrollable panel under the cursor is used; otherwise the document scrolls.
+- Vertical, horizontal, diagonal, nested-panel, frame, shadow-DOM, and right-to-left scrolling are supported.
+- A gesture stays in its original scroll container instead of spilling into the outer page at an edge.
+- Links, form controls, editable content, media, canvas, and draggable elements keep their normal middle-click behavior.
+- Normal wheel scrolling and left/right clicks are unchanged.
 
-Firefox prevents extensions from running on protected pages such as `about:` pages, the built-in PDF viewer, and certain Mozilla domains, including the add-ons store. Other sites may implement custom scrolling or mouse handling that conflicts with this interaction. If a website does not respond, check that Firefox has granted the extension access to that site. See Mozilla's [content script restrictions](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Content_scripts#restricted_domains).
+Firefox does not allow extensions on protected pages such as `about:` pages, its built-in PDF viewer, and some Mozilla sites. A site with custom mouse or scrolling behavior may also conflict with the gesture. If a page does not respond, check that Firefox granted the extension access to that site.
 
-## Local demo and development
+## Privacy
 
-Requires Node.js 22+ and an installed Firefox. Runtime extension code has no dependencies; npm packages are development tools only.
+The extension makes no network requests and transmits no data. It stores only the enabled state, movement multipliers, and disabled URL patterns on your device. Page content, browsing history, and mouse positions are not stored.
 
-```sh
-npm ci
-npm run demo       # Test page at http://127.0.0.1:4173
-npm start          # Isolated Firefox profile with extension loaded
-npm run check      # Mozilla add-on lint + integration tests in headless Firefox
-npm run build      # Unsigned extension ZIP in dist/
-```
+The `tabs` permission lets the popup read the current URL and keeps page exclusions working in frames and after in-page navigation. The content script runs on supported webpages so it can handle the gesture.
 
-## GitHub releases
+## Development
 
-Push a version tag matching `package.json` and `extension/manifest.json`, such as `v0.3.0`, to run **Build**. It validates the extension and uploads the unsigned ZIP as a workflow artifact. After that run succeeds, open **Actions → Release → Run workflow**, enter the same tag, and the workflow creates the GitHub release with that ZIP attached. You can also run **Build** manually for an existing tag before creating the release.
+Build instructions, tests, release steps, implementation details, and the project layout are in [DEVELOPMENT.md](DEVELOPMENT.md).
 
-## Install a build
+## License
 
-To test an unsigned ZIP from a GitHub release, download it and open `about:debugging#/runtime/this-firefox`. Click **Load Temporary Add-on…**, choose the ZIP, and reload any already-open webpages. Firefox removes temporary add-ons when it restarts.
-
-For a permanent installation in standard Firefox, first submit the ZIP to Mozilla for signing (listed on AMO or unlisted for self-distribution). Download the signed `.xpi`, open `about:addons`, select **Install Add-on From File** from the settings cog, choose the `.xpi`, then confirm **Add**. The ZIP produced by this repository's build workflow is unsigned and cannot be permanently installed in standard Firefox.
-
-After `npm start`, open the demo URL in that Firefox window. The demo includes a long document, independent vertical and horizontal scrolling panels, a link, and a text field. It relies on the installed extension; it does not embed or imitate the extension logic.
-
-The integration tests install the actual extension into a fresh Firefox profile using Selenium. They cover proportional mapping on both axes, diagonal movement, right-to-left scrolling, stationary holds, release, edge clamping, nonzero starting positions, nested containers, smooth CSS scrolling, Escape, middle-click links, input fields, modifiers, changing document height, shadow DOM, frames, saved settings, current-page shortcuts, rule removal, and cross-origin frame exclusions during single-page app navigation. Unit tests also check URL pattern matching and settings migration. Selenium Manager downloads geckodriver on the first test run. Test screenshots are written to `test-results/`. Set `FIREFOX_BINARY` if Firefox is not in a standard installation location.
-
-The development launcher and tests isolate Firefox application data as well as the browser profile, avoiding the macOS 27 [command-line startup issue](https://bugzilla.mozilla.org/show_bug.cgi?id=2060476). Tests use geckodriver's `--allow-system-access` only in their disposable profile to open the extension's popup page for UI verification.
-
-```text
-extension/           Loadable extension; only this folder is packaged
-  manifest.json      Firefox Manifest V3, permissions, and script registration
-  content.js         Gesture lifecycle and absolute scroll mapping
-  content.css        Cursor feedback while a gesture is active
-  settings.js        Shared defaults and validation
-  patterns.js        Shared URL pattern parsing and matching
-  background.js      Top-level URL updates for cross-origin frames
-  popup/             Toolbar controls
-demo/                Manual test page
-tests/               Actual Firefox extension integration tests
-scripts/             Local demo server
-```
-
-## Privacy and permissions
-
-The extension makes no network requests and transmits no data. It uses `storage` for the enabled state, the two movement multipliers, and URL patterns you choose to disable. The `tabs` permission reads the active page URL for the popup and tracks a tab's current URL so exclusions also apply inside frames and after in-page navigation. Its content script matches all URLs so the gesture can work on supported pages; Firefox may describe this as access to website data. No browsing history, page content, or mouse positions are stored. URL patterns stay in local extension storage. The manifest declares no data collection using Firefox's [built-in data consent format](https://extensionworkshop.com/documentation/develop/firefox-builtin-data-consent/).
-
-The included development ID is `absolute-scrolling@extensions.local`. Choose your own permanent extension ID before the first Mozilla submission.
+[MIT](LICENSE)
