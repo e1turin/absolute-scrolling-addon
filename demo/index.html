@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Absolute Scrolling · Test drive</title>
+  <style>
+    :root { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1c3730; background: #f6f8f0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { position: fixed; inset: 0 0 auto; padding: 22px 6vw; display: flex; justify-content: space-between; border-bottom: 1px solid #d7dfcc; background: #f6f8f0f2; z-index: 2; }
+    header strong { letter-spacing: -.5px; }
+    header span { font: 11px monospace; text-transform: uppercase; letter-spacing: 2px; color: #6c7e67; }
+    main { max-width: 1120px; margin: auto; padding: 140px 360px 0 60px; }
+    .eyebrow { font: 11px monospace; letter-spacing: 2px; text-transform: uppercase; color: #698251; }
+    h1 { font-weight: 500; font-size: clamp(40px, 5.8vw, 74px); letter-spacing: -4px; line-height: 1.06; margin: 26px 0; }
+    p { max-width: 460px; font-size: 16px; line-height: 1.75; color: #5e725e; }
+    .formula { display: inline-block; padding: 15px 19px; background: #e7eedb; border-radius: 9px; font: 13px monospace; }
+    section.chapter { min-height: 95vh; padding-top: 60px; border-top: 1px solid #d7dfcc; }
+    .hero { min-height: 95vh; }
+    .number { font-size: 110px; letter-spacing: -8px; color: #c4d5b3; }
+    h2 { font-size: 29px; font-weight: 500; letter-spacing: -1px; }
+    aside { position: fixed; top: 130px; right: 5vw; width: 270px; padding: 21px; border: 1px solid #d3ddc7; border-radius: 14px; background: #eef3e6; }
+    aside h2 { font-size: 16px; letter-spacing: 0; margin: 0 0 8px; }
+    aside p { font-size: 12px; margin: 0 0 16px; }
+    #nested { height: 245px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid #d1ddc3; border-radius: 8px; background: #f9fbf5; }
+    .nested-row { min-height: 170px; padding: 18px; border-bottom: 1px solid #dbe4d2; font-size: 12px; color: #647557; }
+    .nested-row b { display: block; font-size: 32px; margin: 14px 0; color: #8aa376; font-weight: 400; }
+    .controls { margin-top: 17px; display: grid; gap: 10px; font-size: 11px; }
+    a { color: #376447; }
+    input { width: 100%; border: 1px solid #cbd6c0; border-radius: 5px; padding: 9px; background: #fff; color: #203a35; }
+    footer { padding: 90px 0; font: 12px monospace; color: #627457; }
+    @media (max-width: 800px) { main { padding: 110px 30px 0; } aside { position: static; width: auto; margin: 20px 30px; } h1 { letter-spacing: -2px; } header span { display: none; } }
+  </style>
+</head>
+<body>
+  <header><strong>Absolute Scrolling</strong><span>Interaction lab / 001</span></header>
+  <main>
+    <div class="hero">
+      <div class="eyebrow">A different way to move</div>
+      <h1>The whole page.<br>Within reach.</h1>
+      <p>Hold your middle mouse button and move vertically. A small movement takes you proportionally through the entire page.</p>
+      <div class="formula">20% cursor travel → 20% scroll range</div>
+      <p>Stop your hand. The page stops too.<br>Release to finish. Press again to start a new drag.</p>
+      <p><small>Load the Firefox extension before trying this page. At the default 1× sensitivity, one viewport of movement covers the full scroll range.</small></p>
+    </div>
+    <section class="chapter"><span class="number">01</span><h2>Position, directly.</h2><p>Each gesture starts wherever you are. Move down to travel further into the document; move up to go back.</p></section>
+    <section class="chapter"><span class="number">02</span><h2>Still means still.</h2><p>Hold the button without moving. The document stays put, even if your cursor is far from where the drag began.</p></section>
+    <section class="chapter"><span class="number">03</span><h2>Your point of reference.</h2><p>Return the cursor to where you pressed the button, and you return to your original scroll position.</p></section>
+    <section class="chapter"><span class="number">04</span><h2>Smaller spaces, too.</h2><p>Try the independent panel on the right. The gesture chooses the nearest scrollable area beneath your cursor.</p></section>
+    <section class="chapter"><span class="number">05</span><h2>Just enough control.</h2><p>Open the extension’s toolbar panel to change sensitivity or pause the extension. Hold Alt before pressing the middle button to use normal behavior.</p></section>
+    <section class="chapter"><span class="number">06</span><h2>Take it from here.</h2><p>You’ve reached the last section. Try holding the middle button and moving up to return to the beginning.</p></section>
+    <footer>End of document / Start another gesture to explore again.</footer>
+  </main>
+  <aside>
+    <h2>A page within the page</h2>
+    <p>Middle-drag inside this panel. The outer document should stay still.</p>
+    <div id="nested" tabindex="0" aria-label="Independent scroll test">
+      <div class="nested-row"><b>01</b>Start a gesture here.</div>
+      <div class="nested-row"><b>02</b>Move a little further.</div>
+      <div class="nested-row"><b>03</b>Stop moving to stop scrolling.</div>
+      <div class="nested-row"><b>04</b>Return to your starting point.</div>
+      <div class="nested-row"><b>05</b>Release whenever you like.</div>
+      <div class="nested-row"><b>06</b>The end of the inner panel.</div>
+    </div>
+    <div class="controls">
+      <a id="test-link" href="/link">Middle-click opens this link normally ↗</a>
+      <label for="test-input">Text fields keep their normal behavior</label>
+      <input id="test-input" placeholder="Try a middle click here">
+    </div>
+  </aside>
+</body>
+</html>

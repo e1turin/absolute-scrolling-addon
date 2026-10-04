@@ -1,0 +1,5 @@
+:root[data-absolute-scrolling-active],
+:root[data-absolute-scrolling-active] * {
+  cursor: ns-resize !important;
+  user-select: none !important;
+}
