@@ -1,6 +1,6 @@
 # Absolute Scrolling
 
-A Firefox extension that turns middle-button dragging into direct page positioning. Cursor displacement maps to the page's full scroll range, so scrolling stops as soon as the cursor stops.
+A Firefox and Chromium extension that turns middle-button dragging into direct page positioning. Cursor displacement maps to the page's full scroll range, so scrolling stops as soon as the cursor stops.
 
 ## Quick usage
 
@@ -20,7 +20,7 @@ Open the toolbar popup to:
 
 ## Install
 
-Absolute Scrolling requires desktop Firefox 140 or later and a mouse with a middle button.
+Absolute Scrolling requires a desktop browser and a mouse with a middle button.
 
 ### Install from a GitHub release
 
@@ -41,6 +41,18 @@ Use the same `about:debugging` page, click **Load Temporary Add-on…**, and sel
 Standard Firefox requires extensions to be signed by Mozilla. GitHub releases contain the signed `.xpi`; Build workflow artifacts are unsigned ZIPs intended only for testing or submission.
 
 See Mozilla's guides for [temporary installation](https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/) and [signing and distribution](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/).
+
+### Load unpacked in Chromium browsers
+
+Chrome, Chromium, Edge, and Brave can load the extension directly from a folder; no Store account or publishing is needed.
+
+1. In this repository, run `npm run build:chromium`.
+2. Open the browser's extensions page: `chrome://extensions`, `edge://extensions`, or `brave://extensions`.
+3. Turn on **Developer mode**.
+4. Click **Load unpacked** and select this repository's `dist/chromium` folder.
+5. Open or reload a normal webpage, then pin the extension from the toolbar's extensions menu if desired.
+
+To use the extension on local `file:` URLs, open its details on the extensions page and enable **Allow access to file URLs**. Re-run `npm run build:chromium` after source changes, then click **Reload** for the unpacked extension.
 
 ## Disable on selected pages
 
@@ -71,7 +83,7 @@ A bare value such as `example.com/docs/*` is shorthand for `*://example.com/docs
 - Links, form controls, editable content, media, canvas, and draggable elements keep their normal middle-click behavior.
 - Normal wheel scrolling and left/right clicks are unchanged.
 
-Firefox does not allow extensions on protected pages such as `about:` pages, its built-in PDF viewer, and some Mozilla sites. A site with custom mouse or scrolling behavior may also conflict with the gesture. If a page does not respond, check that Firefox granted the extension access to that site.
+Browsers do not allow extensions on protected pages such as `about:` and `chrome:` pages, their built-in PDF viewers, and some vendor sites. A site with custom mouse or scrolling behavior may also conflict with the gesture. If a page does not respond, check that the browser granted the extension access to that site.
 
 ## Privacy
 

@@ -1,5 +1,6 @@
 "use strict";
 
+const extensionApi = globalThis.browser ?? globalThis.chrome;
 const { defaults, storageDefaults, normalize } = globalThis.AbsoluteScrollingSettings;
 const patterns = globalThis.AbsoluteScrollingPatterns;
 const enabled = document.querySelector("#enabled");
@@ -82,7 +83,7 @@ async function savePreferences() {
   };
   try {
     // Update only these fields so a preference edit can never erase exclusions.
-    await browser.storage.local.set(patch);
+    await extensionApi.storage.local.set(patch);
     settings = normalize({ ...settings, ...patch });
     verticalSensitivity.value = settings.verticalSensitivity;
     horizontalSensitivity.value = settings.horizontalSensitivity;
@@ -101,7 +102,7 @@ async function savePatterns(nextPatterns, message) {
   showPatternError();
   renderPatterns();
   try {
-    await browser.storage.local.set({ disabledPatterns: nextPatterns });
+    await extensionApi.storage.local.set({ disabledPatterns: nextPatterns });
     settings.disabledPatterns = nextPatterns;
     status.textContent = message;
   } catch (error) {
@@ -125,10 +126,10 @@ async function addPattern(value) {
 }
 
 async function initialize() {
-  const saved = await browser.storage.local.get(storageDefaults);
+  const saved = await extensionApi.storage.local.get(storageDefaults);
   settings = normalize(saved);
   try {
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    const [tab] = await extensionApi.tabs.query({ active: true, currentWindow: true });
     currentUrl = tab?.url || null;
     if (currentUrl) {
       pagePattern = patterns.pagePattern(currentUrl);

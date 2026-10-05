@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Absolute Scrolling",
+  "version": "0.3.0",
+  "description": "Hold the middle mouse button and move to scroll proportionally through a page. Stop moving, stop scrolling.",
+  "minimum_chrome_version": "99",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_title": "Absolute Scrolling",
+    "default_popup": "popup/popup.html"
+  },
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "js": ["settings.js", "patterns.js", "content.js"],
+    "css": ["content.css"],
+    "run_at": "document_start",
+    "all_frames": true,
+    "match_about_blank": true
+  }]
+}

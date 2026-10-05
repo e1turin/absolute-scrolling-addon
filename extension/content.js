@@ -1,6 +1,7 @@
 (() => {
   "use strict";
 
+  const extensionApi = globalThis.browser ?? globalThis.chrome;
   const { defaults, storageDefaults, normalize } = globalThis.AbsoluteScrollingSettings;
   const { compile } = globalThis.AbsoluteScrollingPatterns;
   const ignoredSelector = [
@@ -16,8 +17,8 @@
   let isExcluded = compile([]);
 
   Promise.all([
-    browser.storage.local.get(storageDefaults),
-    window === window.top ? pageUrl : browser.runtime.sendMessage({ type: "absolute-scrolling:get-page-url" }),
+    extensionApi.storage.local.get(storageDefaults),
+    window === window.top ? pageUrl : extensionApi.runtime.sendMessage({ type: "absolute-scrolling:get-page-url" }),
   ]).then(([saved, topUrl]) => {
     settings = normalize(saved);
     pageUrl = topUrl || pageUrl;
@@ -25,7 +26,7 @@
     ready = true;
   }).catch((error) => console.warn("Absolute Scrolling: unable to load settings", error));
 
-  browser.runtime.onMessage.addListener((message) => {
+  extensionApi.runtime.onMessage.addListener((message) => {
     if (message?.type === "absolute-scrolling:page-url") {
       pageUrl = message.url;
       if (excluded()) finish();
@@ -36,7 +37,7 @@
     return isExcluded(window === window.top ? window.location.href : pageUrl) || isExcluded(window.location.href);
   }
 
-  browser.storage.onChanged.addListener((changes, area) => {
+  extensionApi.storage.onChanged.addListener((changes, area) => {
     if (area !== "local") return;
     for (const key of Object.keys(defaults)) {
       if (key in changes) settings[key] = changes[key].newValue ?? defaults[key];

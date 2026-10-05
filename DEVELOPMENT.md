@@ -4,6 +4,7 @@
 
 - Node.js 22 or later
 - Desktop Firefox
+- Chrome, Chromium, Edge, or Brave for Chromium testing
 - npm
 
 Runtime extension code has no dependencies. The npm packages are development and packaging tools.
@@ -16,9 +17,12 @@ npm run demo       # Test page at http://127.0.0.1:4173
 npm start          # Isolated Firefox profile with the extension loaded
 npm run check      # Add-on lint plus integration and unit tests
 npm run build      # Unsigned extension ZIP in dist/
+npm run build:chromium # Unpacked Chromium extension in dist/chromium/
 ```
 
 After `npm start`, open the demo URL in that Firefox window. The demo has a long document, independent vertical and horizontal panels, a link, and a text field. It uses the installed extension and does not copy its behavior into the page.
+
+`npm run build:chromium` copies the shared extension files into `dist/chromium/` and replaces the Firefox manifest with the Chromium MV3 manifest. Load that directory through **Load unpacked** on a Chromium browser's extensions page.
 
 ## Scrolling model
 
@@ -84,9 +88,10 @@ extension/           Loadable extension; only this folder is packaged
   patterns.js        URL pattern parsing and matching
   background.js      Top-level URL updates for cross-origin frames
   popup/             Toolbar controls
+chromium/             Chromium-specific MV3 manifest
 demo/                Manual test page
 tests/               Firefox integration and unit tests
-scripts/             Demo server and development launcher
+scripts/             Demo server, development launcher, and Chromium builder
 .github/workflows/   Build and manual release automation
 ```
 
