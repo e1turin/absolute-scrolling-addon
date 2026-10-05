@@ -58,10 +58,14 @@ The browser pipelines are independent:
 
 | Workflow | Runs on | Output |
 | --- | --- | --- |
-| **Build Firefox** (`build-firefox.yml`) | Branch pushes, `v*` tags, pull requests, or manual runs | `firefox-bundle` artifact containing an unsigned Firefox ZIP |
-| **Build Chromium** (`build-chromium.yml`) | Branch pushes, `v*` tags, pull requests, or manual runs | `chromium-bundle` artifact containing the loadable extension files |
-| **Release Firefox** (`release-firefox.yml`) | Manual run with an existing version tag | AMO-signed `.xpi`, saved as an artifact and GitHub release asset |
-| **Release Chromium** (`release-chromium.yml`) | Manual run with an existing version tag | Project-signed `.crx` and development `.zip`, saved as artifacts and GitHub release assets |
+| **Build Firefox** (`build-firefox.yml`) | Branch pushes, `v*` tag pushes, or manual runs | `firefox-bundle` artifact containing an unsigned Firefox ZIP |
+| **Build Chromium** (`build-chromium.yml`) | Branch pushes, `v*` tag pushes, or manual runs | `chromium-bundle` artifact containing the loadable extension files |
+| **Release Firefox** (`release-firefox.yml`) | Manual run with an existing version tag | Unsigned Firefox ZIP; optionally also an AMO-signed `.xpi` |
+| **Release Chromium** (`release-chromium.yml`) | Manual run with an existing version tag | Development ZIP; optionally also a project-signed `.crx` |
+
+The normal flow is **push → download a build artifact → test → manually publish a release**. Signing is off by default in both release workflows. Unsigned releases need no AMO credentials or Chromium key; GitHub provides the repository token used to attach assets. Both workflows save their release files as artifacts as well as GitHub release assets.
+
+Builds run once per browser on each push; there is no additional pull-request trigger. Chromium's builder and shared unit tests use only Node.js, so its workflow skips dependency installation. Each build summary links directly to its download. Workflow and release changes do not automatically publish anything.
 
 For a Chromium development install, run **Actions → Build Chromium → Run workflow**, select the branch, and leave **tag** empty. Download **chromium-bundle** from the completed run, extract it, and select the folder containing `manifest.json` through **Load unpacked**. The artifact ZIP has the manifest at its root, so there is no inner archive to extract. Builds require no signing secrets and do not publish a release.
 
@@ -73,7 +77,7 @@ The manual **Run workflow** button becomes available after these workflow files 
 
 ### Firefox
 
-`npm run build` creates an unsigned ZIP in `dist/`. Standard and Beta Firefox require Mozilla signing before permanent installation. **Release Firefox** builds the requested tag, extracts that run's archive, submits it to AMO's **unlisted** channel, and attaches the signed `.xpi` returned by Mozilla to the GitHub release.
+`npm run build` creates an unsigned ZIP in `dist/`. Standard and Beta Firefox require Mozilla signing before permanent installation. With its signing checkbox enabled, **Release Firefox** builds the requested tag, extracts that run's archive, submits it to AMO's **unlisted** channel, and adds the signed `.xpi` returned by Mozilla to the GitHub release alongside the unsigned ZIP. Without signing, it publishes only the ZIP and skips all signing tools and credentials.
 
 Before the first signing, create AMO API credentials in the [AMO Developer Hub](https://addons.mozilla.org/developers/addon/api/key/) and add them as repository secrets:
 
@@ -95,17 +99,17 @@ gh secret set CHROMIUM_PRIVATE_KEY < /secure/path/absolute-scrolling-chromium.pe
 
 Keep a secure backup and reuse the same key for every release so the extension ID stays stable. Never commit the PEM file. The workflow writes the key to a temporary directory, removes it after packing, and uploads only `.crx` and `.zip` files.
 
-**Release Chromium** uses Chrome on the GitHub runner to sign the built Chromium files. This creates a project-signed CRX, not a Chrome Web Store signature or listing. Standard Chrome on Windows and macOS restricts self-hosted CRX installation to managed environments; use the ZIP with **Load unpacked** for development. See [Chrome's distribution guide](https://developer.chrome.com/docs/extensions/how-to/distribute) and [packaging documentation](https://developer.chrome.com/docs/extensions/how-to/distribute/host-on-linux).
+With its signing checkbox enabled, **Release Chromium** uses Chrome on the GitHub runner to sign the built Chromium files. This adds a project-signed CRX alongside the development ZIP, not a Chrome Web Store signature or listing. Without signing, it publishes only the ZIP and needs no private key. Standard Chrome on Windows and macOS restricts self-hosted CRX installation to managed environments; use the ZIP with **Load unpacked** for development. See [Chrome's distribution guide](https://developer.chrome.com/docs/extensions/how-to/distribute) and [packaging documentation](https://developer.chrome.com/docs/extensions/how-to/distribute/host-on-linux).
 
 ## GitHub releases
 
 1. Update the version in `package.json`, `package-lock.json` (including its root package entry), `extension/manifest.json`, and `chromium/manifest.json`.
-2. Commit the release and create a matching tag such as `v0.3.0`.
+2. Commit the release and create a matching new tag such as `v0.3.1`.
 3. Push the tag. Both browser build workflows validate and upload unsigned bundles automatically.
-4. When a signed release is wanted, open **Actions → Release Firefox** or **Release Chromium → Run workflow**, use the default branch for the workflow, and enter the version tag.
-5. Each release calls its browser's build workflow and signs the artifact produced within that same run. It then creates the GitHub release or adds its browser's assets to the existing release. Reruns replace assets with the same names; assets for the other browser are preserved.
+4. To publish, open **Actions → Release Firefox** or **Release Chromium → Run workflow**, use the default branch for the workflow, and enter the version tag. Leave the signing checkbox off for an unsigned release. Enable it only after configuring the signing secrets.
+5. Each release calls its browser's build workflow and publishes the resulting ZIP. If requested, it also signs that run's artifact and publishes the signed bundle. It creates the GitHub release or adds its browser's assets to the existing release. Reruns replace assets with the same names; assets for the other browser are preserved. An unsigned rerun does not remove existing signed assets.
 
-Signing and release publication happen only on demand. Either browser can be released independently, in either order; release runs for the same tag are serialized to avoid racing to create the shared release. No lookup of an earlier build run is needed, and expired artifacts can be rebuilt. Use a new version for a new Firefox submission to AMO. Chromium releases require a tag that contains Chromium support (`v0.3.0` predates it).
+Signing and release publication happen only on demand. Either browser can be released independently, in either order; release runs for the same tag are serialized to avoid racing to create the shared release. Release workflows build their tag within the run so they do not depend on finding an earlier run or an unexpired artifact. After adding credentials, run a release again with signing enabled to add a signed asset; use a new version for a new Firefox submission to AMO. Chromium releases require a tag that contains Chromium support (`v0.3.0` predates it).
 
 ## Project layout
 

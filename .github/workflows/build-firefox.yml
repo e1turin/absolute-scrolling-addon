@@ -1,10 +1,10 @@
 name: Build Firefox
+run-name: Firefox bundle · ${{ inputs.tag || github.ref_name }}
 
 on:
   push:
     branches: ["**"]
     tags: ["v*"]
-  pull_request:
   workflow_dispatch:
     inputs:
       tag:
@@ -34,7 +34,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -70,8 +70,20 @@ jobs:
         run: npm run build
 
       - name: Upload Firefox archive
+        id: bundle
         uses: actions/upload-artifact@v5
         with:
           name: firefox-bundle
           path: dist/*.zip
           if-no-files-found: error
+
+      - name: Explain installation
+        env:
+          BUNDLE_URL: ${{ steps.bundle.outputs.artifact-url }}
+        run: |
+          printf '[Download unsigned Firefox bundle](%s)\n\n' "$BUNDLE_URL" >> "$GITHUB_STEP_SUMMARY"
+          cat >> "$GITHUB_STEP_SUMMARY" <<'MARKDOWN'
+          Extract the artifact ZIP to get the extension archive. For temporary
+          testing, select that archive in `about:debugging` → **This Firefox** →
+          **Load Temporary Add-on**. Use **Release Firefox** for a signed XPI.
+          MARKDOWN

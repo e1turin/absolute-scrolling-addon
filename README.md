@@ -24,7 +24,7 @@ Absolute Scrolling requires a desktop browser and a mouse with a middle button.
 
 ### Install Firefox from a GitHub release
 
-Download the signed `.xpi` from a GitHub release, then:
+For permanent installation, choose a GitHub release containing a signed `.xpi`, then:
 
 1. Open `about:addons` in Firefox.
 2. Select **Install Add-on From File** from the settings menu.
@@ -38,7 +38,7 @@ Use the same `about:debugging` page, click **Load Temporary Add-on…**, and sel
 
 ### Install permanently
 
-Standard Firefox requires extensions to be signed by Mozilla. GitHub releases contain the signed `.xpi`; **Build Firefox** workflow artifacts are unsigned ZIPs intended only for testing or submission.
+Standard Firefox requires extensions to be signed by Mozilla. Releases created with signing enabled contain a signed `.xpi`. Unsigned release ZIPs and **Build Firefox** workflow artifacts are intended for temporary testing or submission.
 
 See Mozilla's guides for [temporary installation](https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/) and [signing and distribution](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/).
 
@@ -64,7 +64,7 @@ To build locally instead:
 
 To use the extension on local `file:` URLs, open its details on the extensions page and enable **Allow access to file URLs**. Re-run `npm run build:chromium` after source changes, then click **Reload** for the unpacked extension.
 
-**Release Chromium** can also produce a signed `.crx` and a development ZIP on demand. A CRX signed with the project's key is not Chrome Web Store signing; standard Chrome on Windows and macOS restricts installation of self-hosted CRX files to managed environments. Use **Load unpacked** for development. See [Chrome's distribution guide](https://developer.chrome.com/docs/extensions/how-to/distribute).
+For a lasting download link, manually run **Release Chromium** with a version tag. It publishes a development ZIP without signing credentials. Its optional signing checkbox also adds a `.crx` when `CHROMIUM_PRIVATE_KEY` is configured. A CRX signed with the project's key is not Chrome Web Store signing; standard Chrome on Windows and macOS restricts installation of self-hosted CRX files to managed environments. Use **Load unpacked** for development. See [Chrome's distribution guide](https://developer.chrome.com/docs/extensions/how-to/distribute).
 
 ## Disable on selected pages
 

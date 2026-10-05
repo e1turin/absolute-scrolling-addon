@@ -1,12 +1,17 @@
 name: Release Firefox
+run-name: Release Firefox · ${{ inputs.tag }} · ${{ inputs.sign && 'signed' || 'unsigned' }}
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing version tag to build, sign with AMO, and release (for example, v0.4.0)"
+        description: "Existing version tag to release (for example, v0.4.0)"
         required: true
         type: string
+      sign:
+        description: "Also sign an XPI (requires the AMO_JWT_ISSUER and AMO_JWT_SECRET secrets)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -32,6 +37,7 @@ jobs:
       GH_REPO: ${{ github.repository }}
     steps:
       - name: Check out built commit for signing tools
+        if: ${{ inputs.sign }}
         uses: actions/checkout@v5
         with:
           ref: ${{ needs.build.outputs.commit }}
@@ -43,15 +49,23 @@ jobs:
           path: build-artifact
 
       - name: Set up Node.js
+        if: ${{ inputs.sign }}
         uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
 
       - name: Install signing tools
+        if: ${{ inputs.sign }}
         run: npm ci
 
+      - name: Prepare unsigned Firefox ZIP
+        run: |
+          mkdir -p release-assets
+          cp build-artifact/*.zip "release-assets/absolute-scrolling-${RELEASE_TAG}-firefox.zip"
+
       - name: Sign built archive through AMO
+        if: ${{ inputs.sign }}
         env:
           WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
           WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
@@ -65,12 +79,13 @@ jobs:
             --source-dir signing-source \
             --artifacts-dir signed-assets \
             --channel unlisted
+          cp signed-assets/*.xpi release-assets/
 
-      - name: Upload signed Firefox bundle
+      - name: Upload Firefox release bundles
         uses: actions/upload-artifact@v5
         with:
-          name: firefox-signed-bundle
-          path: signed-assets/*.xpi
+          name: firefox-release-bundles
+          path: release-assets/*
           if-no-files-found: error
 
       - name: Create or update GitHub release
@@ -78,7 +93,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" signed-assets/*.xpi --clobber
+            gh release upload "$RELEASE_TAG" release-assets/* --clobber
           else
-            gh release create "$RELEASE_TAG" signed-assets/*.xpi --verify-tag --generate-notes
+            gh release create "$RELEASE_TAG" release-assets/* --verify-tag --generate-notes
           fi

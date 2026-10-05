@@ -1,12 +1,17 @@
 name: Release Chromium
+run-name: Release Chromium · ${{ inputs.tag }} · ${{ inputs.sign && 'signed' || 'unsigned' }}
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing version tag to build, sign as CRX, and release (for example, v0.4.0)"
+        description: "Existing version tag to release (for example, v0.4.0)"
         required: true
         type: string
+      sign:
+        description: "Also sign a CRX (requires the CHROMIUM_PRIVATE_KEY secret)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -37,6 +42,7 @@ jobs:
           path: dist/chromium
 
       - name: Sign Chromium CRX
+        if: ${{ inputs.sign }}
         env:
           CHROMIUM_PRIVATE_KEY: ${{ secrets.CHROMIUM_PRIVATE_KEY }}
         run: |
@@ -57,20 +63,20 @@ jobs:
             echo "::error::Chrome did not produce a signed CRX. Check the PEM key and Chrome output."
             exit 1
           }
-          mkdir -p signed-assets
-          mv dist/chromium.crx "signed-assets/absolute-scrolling-${RELEASE_TAG}-chromium.crx"
+          mkdir -p release-assets
+          mv dist/chromium.crx "release-assets/absolute-scrolling-${RELEASE_TAG}-chromium.crx"
 
       - name: Package development ZIP
         working-directory: dist/chromium
-        run: zip -q -r "../../signed-assets/absolute-scrolling-${RELEASE_TAG}-chromium.zip" .
+        run: |
+          mkdir -p ../../release-assets
+          zip -q -r "../../release-assets/absolute-scrolling-${RELEASE_TAG}-chromium.zip" .
 
       - name: Upload Chromium release bundles
         uses: actions/upload-artifact@v5
         with:
           name: chromium-release-bundles
-          path: |
-            signed-assets/*.crx
-            signed-assets/*.zip
+          path: release-assets/*
           if-no-files-found: error
 
       - name: Create or update GitHub release
@@ -78,7 +84,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" signed-assets/*.crx signed-assets/*.zip --clobber
+            gh release upload "$RELEASE_TAG" release-assets/* --clobber
           else
-            gh release create "$RELEASE_TAG" signed-assets/*.crx signed-assets/*.zip --verify-tag --generate-notes
+            gh release create "$RELEASE_TAG" release-assets/* --verify-tag --generate-notes
           fi
