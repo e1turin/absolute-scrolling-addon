@@ -50,9 +50,16 @@ The launcher and tests isolate Firefox application data and its browser profile.
 
 ## Build and signing
 
-`npm run build` creates an unsigned ZIP in `dist/`. Standard and Beta Firefox require Mozilla signing before permanent installation. Submit the ZIP to AMO as either a listed extension or an unlisted self-distributed extension, then distribute the signed `.xpi` returned by Mozilla.
+`npm run build` creates an unsigned ZIP in `dist/`. Standard and Beta Firefox require Mozilla signing before permanent installation. The Release workflow submits the tagged source to AMO's **unlisted** channel and attaches the signed `.xpi` returned by Mozilla to the GitHub release.
 
-The development extension ID is `absolute-scrolling@extensions.local`. Choose the intended permanent ID before the first Mozilla submission.
+Before the first signing, create AMO API credentials in the [AMO Developer Hub](https://addons.mozilla.org/developers/addon/api/key/) and add them as repository secrets:
+
+| Secret | AMO value |
+| --- | --- |
+| `AMO_JWT_ISSUER` | JWT issuer/API key |
+| `AMO_JWT_SECRET` | JWT secret/API secret |
+
+The manifest ID, `absolute-scrolling@extensions.local`, becomes the add-on's permanent ID once AMO signs it. Change it before the first signing only if you want a different permanent ID.
 
 ## GitHub releases
 
@@ -60,9 +67,9 @@ The repository has separate **Build** and **Release** workflows:
 
 1. Update the version in `package.json`, `package-lock.json`, and `extension/manifest.json`.
 2. Commit the release and create a matching tag such as `v0.3.0`.
-3. Push the tag. The **Build** workflow validates the tag and extension, builds the ZIP, and uploads it as an artifact.
+3. Push the tag. The **Build** workflow validates the tag and extension, builds the unsigned ZIP, and uploads it as an artifact.
 4. After Build succeeds, open **Actions → Release → Run workflow** and enter the same tag.
-5. The Release workflow finds the successful build for that exact commit and creates a GitHub release with its ZIP attached.
+5. The Release workflow finds the successful build for that exact commit, signs the checked-out tag with AMO, and creates a GitHub release containing the signed `.xpi`.
 
 The **Build** workflow can also be started manually for an existing tag.
 

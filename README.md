@@ -22,16 +22,15 @@ Open the toolbar popup to:
 
 Absolute Scrolling requires desktop Firefox 140 or later and a mouse with a middle button.
 
-### Try a GitHub build
+### Install from a GitHub release
 
-Download the ZIP from a GitHub release, then:
+Download the signed `.xpi` from a GitHub release, then:
 
-1. Open `about:debugging#/runtime/this-firefox` in Firefox.
-2. Click **Load Temporary Add-on…**.
-3. Select the downloaded ZIP.
-4. Open or reload a normal webpage.
+1. Open `about:addons` in Firefox.
+2. Select **Install Add-on From File** from the settings menu.
+3. Select the downloaded `.xpi` and confirm **Add**.
 
-The temporary installation is removed when Firefox restarts.
+The extension stays installed after Firefox restarts.
 
 ### Try it from source
 
@@ -39,7 +38,7 @@ Use the same `about:debugging` page, click **Load Temporary Add-on…**, and sel
 
 ### Install permanently
 
-Standard Firefox requires extensions to be signed by Mozilla. The GitHub build is unsigned and intended for testing or submission. After obtaining a signed `.xpi`, open `about:addons`, choose **Install Add-on From File** from the settings menu, select the `.xpi`, and confirm **Add**.
+Standard Firefox requires extensions to be signed by Mozilla. GitHub releases contain the signed `.xpi`; Build workflow artifacts are unsigned ZIPs intended only for testing or submission.
 
 See Mozilla's guides for [temporary installation](https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/) and [signing and distribution](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/).
 
