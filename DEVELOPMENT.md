@@ -52,9 +52,28 @@ Selenium Manager downloads geckodriver on the first run. Screenshots are written
 
 The launcher and tests isolate Firefox application data and its browser profile. Tests pass geckodriver's `--allow-system-access` flag only to that disposable profile so they can verify the extension popup.
 
-## Build and signing
+## GitHub builds
 
-`npm run build` creates an unsigned ZIP in `dist/`. Standard and Beta Firefox require Mozilla signing before permanent installation. The Release workflow submits the tagged source to AMO's **unlisted** channel and attaches the signed `.xpi` returned by Mozilla to the GitHub release.
+The browser pipelines are independent:
+
+| Workflow | Runs on | Output |
+| --- | --- | --- |
+| **Build Firefox** (`build-firefox.yml`) | Branch pushes, `v*` tags, pull requests, or manual runs | `firefox-bundle` artifact containing an unsigned Firefox ZIP |
+| **Build Chromium** (`build-chromium.yml`) | Branch pushes, `v*` tags, pull requests, or manual runs | `chromium-bundle` artifact containing the loadable extension files |
+| **Release Firefox** (`release-firefox.yml`) | Manual run with an existing version tag | AMO-signed `.xpi`, saved as an artifact and GitHub release asset |
+| **Release Chromium** (`release-chromium.yml`) | Manual run with an existing version tag | Project-signed `.crx` and development `.zip`, saved as artifacts and GitHub release assets |
+
+For a Chromium development install, run **Actions → Build Chromium → Run workflow**, select the branch, and leave **tag** empty. Download **chromium-bundle** from the completed run, extract it, and select the folder containing `manifest.json` through **Load unpacked**. The artifact ZIP has the manifest at its root, so there is no inner archive to extract. Builds require no signing secrets and do not publish a release.
+
+Both build workflows also accept an optional existing version tag. Tags must match `v` plus the package version; each browser manifest and the lockfile must match `package.json`. Build Chromium runs the shared unit tests; Build Firefox also runs Mozilla's add-on lint. Run `npm run check` locally for the full Firefox integration suite.
+
+The manual **Run workflow** button becomes available after these workflow files are on the repository's default branch. Branch pushes produce build artifacts before then.
+
+## Signing setup
+
+### Firefox
+
+`npm run build` creates an unsigned ZIP in `dist/`. Standard and Beta Firefox require Mozilla signing before permanent installation. **Release Firefox** builds the requested tag, extracts that run's archive, submits it to AMO's **unlisted** channel, and attaches the signed `.xpi` returned by Mozilla to the GitHub release.
 
 Before the first signing, create AMO API credentials in the [AMO Developer Hub](https://addons.mozilla.org/developers/addon/api/key/) and add them as repository secrets:
 
@@ -65,17 +84,28 @@ Before the first signing, create AMO API credentials in the [AMO Developer Hub](
 
 The manifest ID, `absolute-scrolling@extensions.local`, becomes the add-on's permanent ID once AMO signs it. Change it before the first signing only if you want a different permanent ID.
 
+### Chromium
+
+Add a repository secret named `CHROMIUM_PRIVATE_KEY` containing the complete PKCS#8 PEM private key used to sign this extension (`-----BEGIN PRIVATE KEY-----`). Use Chrome's **Pack extension** once to create a key, or generate an RSA key outside the repository:
+
+```sh
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /secure/path/absolute-scrolling-chromium.pem
+gh secret set CHROMIUM_PRIVATE_KEY < /secure/path/absolute-scrolling-chromium.pem
+```
+
+Keep a secure backup and reuse the same key for every release so the extension ID stays stable. Never commit the PEM file. The workflow writes the key to a temporary directory, removes it after packing, and uploads only `.crx` and `.zip` files.
+
+**Release Chromium** uses Chrome on the GitHub runner to sign the built Chromium files. This creates a project-signed CRX, not a Chrome Web Store signature or listing. Standard Chrome on Windows and macOS restricts self-hosted CRX installation to managed environments; use the ZIP with **Load unpacked** for development. See [Chrome's distribution guide](https://developer.chrome.com/docs/extensions/how-to/distribute) and [packaging documentation](https://developer.chrome.com/docs/extensions/how-to/distribute/host-on-linux).
+
 ## GitHub releases
 
-The repository has separate **Build** and **Release** workflows:
-
-1. Update the version in `package.json`, `package-lock.json`, and `extension/manifest.json`.
+1. Update the version in `package.json`, `package-lock.json` (including its root package entry), `extension/manifest.json`, and `chromium/manifest.json`.
 2. Commit the release and create a matching tag such as `v0.3.0`.
-3. Push the tag. The **Build** workflow validates the tag and extension, builds the unsigned ZIP, and uploads it as an artifact.
-4. After Build succeeds, open **Actions → Release → Run workflow** and enter the same tag.
-5. The Release workflow finds the successful build for that exact commit, signs the checked-out tag with AMO, and creates a GitHub release containing the signed `.xpi`.
+3. Push the tag. Both browser build workflows validate and upload unsigned bundles automatically.
+4. When a signed release is wanted, open **Actions → Release Firefox** or **Release Chromium → Run workflow**, use the default branch for the workflow, and enter the version tag.
+5. Each release calls its browser's build workflow and signs the artifact produced within that same run. It then creates the GitHub release or adds its browser's assets to the existing release. Reruns replace assets with the same names; assets for the other browser are preserved.
 
-The **Build** workflow can also be started manually for an existing tag.
+Signing and release publication happen only on demand. Either browser can be released independently, in either order; release runs for the same tag are serialized to avoid racing to create the shared release. No lookup of an earlier build run is needed, and expired artifacts can be rebuilt. Use a new version for a new Firefox submission to AMO. Chromium releases require a tag that contains Chromium support (`v0.3.0` predates it).
 
 ## Project layout
 
