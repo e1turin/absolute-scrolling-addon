@@ -1,0 +1,84 @@
+name: Build Chromium
+run-name: Chromium bundle · ${{ inputs.tag || github.ref_name }}
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Optional existing version tag; leave empty to build the selected branch"
+        type: string
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+    outputs:
+      commit:
+        description: "Commit used to build the bundle"
+        value: ${{ jobs.build.outputs.commit }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+    env:
+      BUILD_TAG: ${{ inputs.tag || (startsWith(github.ref, 'refs/tags/') && github.ref_name) || '' }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Record source commit and validate version
+        id: source
+        run: |
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          const read = path => JSON.parse(readFileSync(path, 'utf8'));
+          const { version } = read('package.json');
+          const lock = read('package-lock.json');
+          assert.equal(lock.version, version, 'Lockfile version must match package.json');
+          assert.equal(lock.packages[''].version, version, 'Lockfile root package version must match package.json');
+          assert.equal(read('chromium/manifest.json').version, version, 'Chromium version must match package.json');
+          if (process.env.BUILD_TAG) assert.equal(process.env.BUILD_TAG, `v${version}`, 'Tag must match package version');
+          NODE
+
+      - name: Run shared unit tests
+        run: node --test tests/patterns.test.js
+
+      - name: Build unpacked Chromium extension
+        run: npm run build:chromium
+
+      - name: Upload development bundle
+        id: bundle
+        uses: actions/upload-artifact@v5
+        with:
+          name: chromium-bundle
+          path: dist/chromium/
+          if-no-files-found: error
+
+      - name: Explain installation
+        env:
+          BUNDLE_URL: ${{ steps.bundle.outputs.artifact-url }}
+        run: |
+          printf '[Download Chromium development ZIP](%s)\n\n' "$BUNDLE_URL" >> "$GITHUB_STEP_SUMMARY"
+          cat >> "$GITHUB_STEP_SUMMARY" <<'MARKDOWN'
+          Download **chromium-bundle** from this run's artifacts and extract the ZIP.
+          Open `chrome://extensions` (or your browser's extensions page), enable
+          **Developer mode**, click **Load unpacked**, and select the extracted
+          folder containing `manifest.json`. No signing key or version tag is needed.
+          MARKDOWN

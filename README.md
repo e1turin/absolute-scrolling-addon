@@ -22,9 +22,9 @@ Open the toolbar popup to:
 
 Absolute Scrolling requires a desktop browser and a mouse with a middle button.
 
-### Install from a GitHub release
+### Install Firefox from a GitHub release
 
-Download the signed `.xpi` from a GitHub release, then:
+For permanent installation, choose a GitHub release containing a signed `.xpi`, then:
 
 1. Open `about:addons` in Firefox.
 2. Select **Install Add-on From File** from the settings menu.
@@ -38,7 +38,7 @@ Use the same `about:debugging` page, click **Load Temporary Add-on…**, and sel
 
 ### Install permanently
 
-Standard Firefox requires extensions to be signed by Mozilla. GitHub releases contain the signed `.xpi`; Build workflow artifacts are unsigned ZIPs intended only for testing or submission.
+Standard Firefox requires extensions to be signed by Mozilla. Releases created with signing enabled contain a signed `.xpi`. Unsigned release ZIPs and **Build Firefox** workflow artifacts are intended for temporary testing or submission.
 
 See Mozilla's guides for [temporary installation](https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/) and [signing and distribution](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/).
 
@@ -46,13 +46,25 @@ See Mozilla's guides for [temporary installation](https://extensionworkshop.com/
 
 Chrome, Chromium, Edge, and Brave can load the extension directly from a folder; no Store account or publishing is needed.
 
-1. In this repository, run `npm run build:chromium`.
+1. Open [Actions → Build Chromium](https://github.com/e1turin/absolute-scrolling-addon/actions/workflows/build-chromium.yml), choose **Run workflow**, select the branch, and leave **tag** empty. You can also use an existing successful build.
+2. Open the completed run, download **chromium-bundle** under **Artifacts**, and extract the ZIP. GitHub requires you to be signed in to download workflow artifacts.
+3. Open the browser's extensions page: `chrome://extensions`, `edge://extensions`, or `brave://extensions`.
+4. Turn on **Developer mode**.
+5. Click **Load unpacked** and select the extracted folder containing `manifest.json`.
+6. Open or reload a normal webpage, then pin the extension from the toolbar's extensions menu if desired.
+
+No version tag or signing credentials are required. Keep the extracted folder in place while the extension is installed.
+
+To build locally instead:
+
+1. In this repository, run `npm run build:chromium` (Node.js 22 or later is required).
 2. Open the browser's extensions page: `chrome://extensions`, `edge://extensions`, or `brave://extensions`.
 3. Turn on **Developer mode**.
 4. Click **Load unpacked** and select this repository's `dist/chromium` folder.
-5. Open or reload a normal webpage, then pin the extension from the toolbar's extensions menu if desired.
 
 To use the extension on local `file:` URLs, open its details on the extensions page and enable **Allow access to file URLs**. Re-run `npm run build:chromium` after source changes, then click **Reload** for the unpacked extension.
+
+For a lasting download link, manually run **Release Chromium** with a version tag. It publishes a development ZIP without signing credentials. Its optional signing checkbox also adds a `.crx` when `CHROMIUM_PRIVATE_KEY` is configured. A CRX signed with the project's key is not Chrome Web Store signing; standard Chrome on Windows and macOS restricts installation of self-hosted CRX files to managed environments. Use **Load unpacked** for development. See [Chrome's distribution guide](https://developer.chrome.com/docs/extensions/how-to/distribute).
 
 ## Disable on selected pages
 
